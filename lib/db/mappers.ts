@@ -94,6 +94,7 @@ export const PARTICIPANT_TO_DB: Record<
   DbParticipantStatus
 > = {
   invited: DbParticipantStatus.INVITED,
+  requested: DbParticipantStatus.REQUESTED,
   joined: DbParticipantStatus.JOINED,
   left: DbParticipantStatus.LEFT,
 };
@@ -103,6 +104,7 @@ export const PARTICIPANT_FROM_DB: Record<
   MatchParticipant["status"]
 > = {
   INVITED: "invited",
+  REQUESTED: "requested",
   JOINED: "joined",
   LEFT: "left",
 };

@@ -54,6 +54,14 @@ export default async function NotificationsPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 {notification.body}
               </p>
+              {notification.matchId ? (
+                <Link
+                  href={`/matches/${notification.matchId}`}
+                  className="text-brand mt-3 inline-flex text-sm font-semibold hover:underline"
+                >
+                  Xem trận
+                </Link>
+              ) : null}
             </li>
           ))}
         </ul>

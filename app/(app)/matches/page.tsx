@@ -3,7 +3,12 @@ import {
   MatchesBoard,
   type MatchCardData,
 } from "@/components/matches/matches-board";
-import { countJoined, getMatches } from "@/lib/data/matches";
+import {
+  countJoined,
+  getMatches,
+  isMatchOpenTo,
+  viewerRole,
+} from "@/lib/data/matches";
 import { getSports } from "@/lib/data/sports";
 import { getCurrentUser, getUsers } from "@/lib/data/users";
 
@@ -24,9 +29,7 @@ export default async function MatchesPage() {
 
   const cards: MatchCardData[] = matches.map((match) => {
     const sport = sportMap.get(match.sportId);
-    const mine = match.participants.find(
-      (participant) => participant.userId === currentUser.id,
-    );
+    const role = viewerRole(match, currentUser.id);
 
     return {
       id: match.id,
@@ -44,9 +47,8 @@ export default async function MatchesPage() {
       participantAvatars: match.participants
         .filter((participant) => participant.status === "joined")
         .map((participant) => userMap.get(participant.userId)?.avatar ?? "🙂"),
-      isHost: match.hostId === currentUser.id,
-      isInvited: mine?.status === "invited",
-      isJoined: mine?.status === "joined",
+      role,
+      isOpen: isMatchOpenTo(match, role),
     };
   });
 

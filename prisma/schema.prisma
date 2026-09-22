@@ -48,6 +48,7 @@ enum MatchStatus {
 
 enum ParticipantStatus {
   INVITED // invited
+  REQUESTED // xin vào trận công khai, chờ chủ trận duyệt
   JOINED // joined
   LEFT // left
 }

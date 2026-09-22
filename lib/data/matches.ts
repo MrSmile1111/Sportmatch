@@ -12,7 +12,12 @@ import {
 } from "@/lib/db/mappers";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import type { Match, MatchVisibility, SkillRequirement } from "@/lib/types";
+import type {
+  Match,
+  MatchVisibility,
+  SkillRequirement,
+  ViewerRole,
+} from "@/lib/types";
 
 const matchSelect = {
   id: true,
@@ -66,7 +71,7 @@ export async function getVisibleMatches(userId: string): Promise<Match[]> {
       OR: [
         { visibility: "PUBLIC" },
         { hostId: userId },
-        { participants: { some: { userId } } },
+        { participants: { some: { userId, status: { not: "LEFT" } } } },
       ],
     },
     select: matchSelect,
@@ -100,6 +105,26 @@ export async function getMatchesJoinedBy(userId: string): Promise<Match[]> {
 
 export function countJoined(match: Match): number {
   return match.participants.filter((p) => p.status === "joined").length;
+}
+
+export function viewerRole(match: Match, userId: string): ViewerRole {
+  if (match.hostId === userId) return "host";
+  const status = match.participants.find((p) => p.userId === userId)?.status;
+  if (status === "joined" || status === "invited" || status === "requested") {
+    return status;
+  }
+  return "none";
+}
+
+/** Trận còn nhận người với người xem này (chưa diễn ra, và công khai hoặc có lời mời). */
+export function isMatchOpenTo(match: Match, role: ViewerRole): boolean {
+  if (match.status !== "Sắp diễn ra") return false;
+  return match.visibility === "Công khai" || role === "invited";
+}
+
+/** Trận người dùng được xem: công khai, hoặc mình là chủ / được mời / đã xin / đã tham gia. */
+export function canViewMatch(match: Match, role: ViewerRole): boolean {
+  return match.visibility === "Công khai" || role !== "none";
 }
 
 export type NewMatchInput = {
@@ -138,7 +163,7 @@ export async function createMatch(input: NewMatchInput): Promise<Match> {
             .map((userId) => ({ userId, status: "INVITED" as const })),
         ],
       },
-      conversation: { create: {} },
+      conversation: { create: { members: { create: { userId: hostId } } } },
     },
     select: matchSelect,
   });
@@ -160,22 +185,263 @@ export async function createMatch(input: NewMatchInput): Promise<Match> {
   return toDomainMatch(match);
 }
 
-/** Người dùng nhận lời mời hoặc xin vào trận công khai. */
-export async function joinMatch(matchId: string): Promise<void> {
-  const userId = await requireUserId();
+// ---------------------------------------------------------------- tham gia trận
 
-  await prisma.matchParticipant.upsert({
+/** Lỗi nghiệp vụ có message tiếng Việt, hiển thị thẳng cho người dùng. */
+export class MatchActionError extends Error {}
+
+type Tx = Prisma.TransactionClient;
+
+/**
+ * Khoá dòng Match trong transaction để hai thao tác đồng thời (vd hai lần
+ * duyệt cùng lúc) không vượt quá số chỗ.
+ */
+async function lockMatch(tx: Tx, matchId: string) {
+  await tx.$queryRaw`SELECT id FROM "Match" WHERE id = ${matchId} FOR UPDATE`;
+
+  const match = await tx.match.findUnique({
+    where: { id: matchId },
+    select: {
+      id: true,
+      title: true,
+      hostId: true,
+      maxPlayers: true,
+      visibility: true,
+      status: true,
+      participants: { select: { userId: true, status: true } },
+    },
+  });
+
+  if (!match) throw new MatchActionError("Trận đấu không tồn tại.");
+  if (match.status !== "UPCOMING") {
+    throw new MatchActionError("Trận đã bắt đầu hoặc đã kết thúc.");
+  }
+  return match;
+}
+
+type LockedMatch = Awaited<ReturnType<typeof lockMatch>>;
+
+function statusOf(match: LockedMatch, userId: string) {
+  return match.participants.find((p) => p.userId === userId)?.status ?? null;
+}
+
+function assertHasSlot(match: LockedMatch) {
+  const joined = match.participants.filter((p) => p.status === "JOINED").length;
+  if (joined >= match.maxPlayers) {
+    throw new MatchActionError("Trận đã đủ người.");
+  }
+}
+
+async function userName(tx: Tx, userId: string) {
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    select: { name: true },
+  });
+  return user?.name ?? "Một người chơi";
+}
+
+async function setJoined(tx: Tx, matchId: string, userId: string) {
+  await tx.matchParticipant.update({
     where: { matchId_userId: { matchId, userId } },
-    create: { matchId, userId, status: "JOINED" },
-    update: { status: "JOINED" },
+    data: { status: "JOINED", joinedAt: new Date() },
+  });
+
+  const conversation = await tx.chatConversation.upsert({
+    where: { matchId },
+    create: { matchId },
+    update: {},
+    select: { id: true },
+  });
+  await tx.conversationMember.upsert({
+    where: {
+      conversationId_userId: { conversationId: conversation.id, userId },
+    },
+    create: { conversationId: conversation.id, userId },
+    update: {},
   });
 }
 
+async function notify(
+  tx: Tx,
+  input: { userId: string; type: "INVITE" | "JOIN"; title: string; body: string; matchId: string },
+) {
+  await tx.notification.create({
+    data: {
+      userId: input.userId,
+      type: input.type,
+      title: input.title,
+      body: input.body,
+      payload: { matchId: input.matchId },
+    },
+  });
+}
+
+/**
+ * Người chơi bấm "Xin tham gia". Trận công khai → tạo yêu cầu chờ chủ trận
+ * duyệt; nếu người này đang có lời mời thì coi như nhận lời luôn.
+ */
+export async function requestToJoin(matchId: string): Promise<void> {
+  const userId = await requireUserId();
+
+  await prisma.$transaction(async (tx) => {
+    const match = await lockMatch(tx, matchId);
+    const status = statusOf(match, userId);
+
+    if (match.hostId === userId) {
+      throw new MatchActionError("Bạn là chủ trận này.");
+    }
+    if (status === "JOINED") {
+      throw new MatchActionError("Bạn đã tham gia trận này.");
+    }
+    if (status === "REQUESTED") {
+      throw new MatchActionError("Bạn đã gửi yêu cầu, hãy chờ chủ trận duyệt.");
+    }
+    if (status === "INVITED") {
+      await acceptInvite(tx, match, userId);
+      return;
+    }
+    if (match.visibility !== "PUBLIC") {
+      throw new MatchActionError("Trận này chỉ dành cho người được mời.");
+    }
+    assertHasSlot(match);
+
+    await tx.matchParticipant.upsert({
+      where: { matchId_userId: { matchId, userId } },
+      create: { matchId, userId, status: "REQUESTED" },
+      update: { status: "REQUESTED", joinedAt: new Date() },
+    });
+    await notify(tx, {
+      userId: match.hostId,
+      type: "JOIN",
+      title: `${await userName(tx, userId)} muốn tham gia trận của bạn`,
+      body: match.title,
+      matchId,
+    });
+  });
+}
+
+async function acceptInvite(tx: Tx, match: LockedMatch, userId: string) {
+  assertHasSlot(match);
+  await setJoined(tx, match.id, userId);
+  await notify(tx, {
+    userId: match.hostId,
+    type: "JOIN",
+    title: `${await userName(tx, userId)} đã nhận lời mời`,
+    body: match.title,
+    matchId: match.id,
+  });
+}
+
+/** Người được mời nhận hoặc từ chối lời mời. */
+export async function respondToInvite(
+  matchId: string,
+  accept: boolean,
+): Promise<void> {
+  const userId = await requireUserId();
+
+  await prisma.$transaction(async (tx) => {
+    const match = await lockMatch(tx, matchId);
+    if (statusOf(match, userId) !== "INVITED") {
+      throw new MatchActionError("Lời mời không còn hiệu lực.");
+    }
+
+    if (accept) {
+      await acceptInvite(tx, match, userId);
+      return;
+    }
+
+    await tx.matchParticipant.delete({
+      where: { matchId_userId: { matchId, userId } },
+    });
+    await notify(tx, {
+      userId: match.hostId,
+      type: "JOIN",
+      title: `${await userName(tx, userId)} đã từ chối lời mời`,
+      body: match.title,
+      matchId,
+    });
+  });
+}
+
+/** Người chơi rút lại yêu cầu tham gia đang chờ duyệt. */
+export async function cancelJoinRequest(matchId: string): Promise<void> {
+  const userId = await requireUserId();
+
+  await prisma.$transaction(async (tx) => {
+    const match = await lockMatch(tx, matchId);
+    if (statusOf(match, userId) !== "REQUESTED") {
+      throw new MatchActionError("Không có yêu cầu nào đang chờ duyệt.");
+    }
+    await tx.matchParticipant.delete({
+      where: { matchId_userId: { matchId, userId } },
+    });
+  });
+}
+
+/** Thành viên (không phải chủ trận) rời trận. */
 export async function leaveMatch(matchId: string): Promise<void> {
   const userId = await requireUserId();
 
-  await prisma.matchParticipant.update({
-    where: { matchId_userId: { matchId, userId } },
-    data: { status: "LEFT" },
+  await prisma.$transaction(async (tx) => {
+    const match = await lockMatch(tx, matchId);
+    if (match.hostId === userId) {
+      throw new MatchActionError("Chủ trận không thể rời trận.");
+    }
+    if (statusOf(match, userId) !== "JOINED") {
+      throw new MatchActionError("Bạn chưa tham gia trận này.");
+    }
+
+    await tx.matchParticipant.update({
+      where: { matchId_userId: { matchId, userId } },
+      data: { status: "LEFT" },
+    });
+    await tx.conversationMember.deleteMany({
+      where: { userId, conversation: { matchId } },
+    });
+    await notify(tx, {
+      userId: match.hostId,
+      type: "JOIN",
+      title: `${await userName(tx, userId)} đã rời trận`,
+      body: match.title,
+      matchId,
+    });
+  });
+}
+
+/** Chủ trận chấp nhận hoặc từ chối một yêu cầu tham gia. */
+export async function reviewJoinRequest(
+  matchId: string,
+  requesterId: string,
+  approve: boolean,
+): Promise<void> {
+  const userId = await requireUserId();
+
+  await prisma.$transaction(async (tx) => {
+    const match = await lockMatch(tx, matchId);
+    if (match.hostId !== userId) {
+      throw new MatchActionError("Chỉ chủ trận mới duyệt được yêu cầu.");
+    }
+    if (statusOf(match, requesterId) !== "REQUESTED") {
+      throw new MatchActionError("Yêu cầu không còn hiệu lực.");
+    }
+
+    if (approve) {
+      assertHasSlot(match);
+      await setJoined(tx, matchId, requesterId);
+    } else {
+      await tx.matchParticipant.delete({
+        where: { matchId_userId: { matchId, userId: requesterId } },
+      });
+    }
+
+    await notify(tx, {
+      userId: requesterId,
+      type: "JOIN",
+      title: approve
+        ? "Yêu cầu tham gia đã được chấp nhận"
+        : "Yêu cầu tham gia bị từ chối",
+      body: match.title,
+      matchId,
+    });
   });
 }

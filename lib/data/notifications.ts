@@ -10,6 +10,14 @@ const TYPE_FROM_DB = {
   SYSTEM: "system",
 } as const;
 
+function matchIdFromPayload(payload: unknown): string | null {
+  if (payload && typeof payload === "object" && "matchId" in payload) {
+    const { matchId } = payload as { matchId: unknown };
+    return typeof matchId === "string" ? matchId : null;
+  }
+  return null;
+}
+
 export async function getNotifications(
   userId: string,
 ): Promise<Notification[]> {
@@ -25,6 +33,7 @@ export async function getNotifications(
     type: TYPE_FROM_DB[row.type],
     title: row.title,
     body: row.body,
+    matchId: matchIdFromPayload(row.payload),
     readAt: row.readAt ? row.readAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
   }));

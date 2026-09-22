@@ -56,8 +56,11 @@ export type SkillRequirement = SkillLevel | "Bất kỳ";
 
 export type MatchParticipant = {
   userId: string;
-  status: "invited" | "joined" | "left";
+  status: "invited" | "requested" | "joined" | "left";
 };
+
+/** Quan hệ của người đang xem với một trận. */
+export type ViewerRole = "host" | "joined" | "invited" | "requested" | "none";
 
 export type Match = {
   id: string;
@@ -104,6 +107,8 @@ export type Notification = {
   type: "invite" | "join" | "rating" | "system";
   title: string;
   body: string;
+  /** Trận liên quan (lời mời, yêu cầu tham gia...) để thông báo link tới. */
+  matchId: string | null;
   readAt: string | null;
   createdAt: string;
 };

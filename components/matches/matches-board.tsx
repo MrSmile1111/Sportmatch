@@ -12,8 +12,9 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
+import { MatchCardAction } from "@/components/matches/match-actions";
 import { formatDateTime } from "@/lib/format";
-import { SKILL_LEVELS } from "@/lib/types";
+import { SKILL_LEVELS, type ViewerRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export type MatchCardData = {
@@ -30,9 +31,8 @@ export type MatchCardData = {
   joined: number;
   maxPlayers: number;
   participantAvatars: string[];
-  isHost: boolean;
-  isInvited: boolean;
-  isJoined: boolean;
+  role: ViewerRole;
+  isOpen: boolean;
 };
 
 const tabs = [
@@ -61,9 +61,9 @@ export function MatchesBoard({
   const visible = useMemo(() => {
     return matches.filter((match) => {
       if (tab === "public" && match.visibility !== "Công khai") return false;
-      if (tab === "mine" && !match.isHost) return false;
-      if (tab === "invites" && !match.isInvited) return false;
-      if (tab === "joined" && !match.isJoined) return false;
+      if (tab === "mine" && match.role !== "host") return false;
+      if (tab === "invites" && match.role !== "invited") return false;
+      if (tab === "joined" && match.role !== "joined") return false;
 
       if (sportId !== "all" && match.sportId !== sportId) return false;
       if (level !== "all" && match.skillRequirement !== level) return false;
@@ -211,9 +211,12 @@ export function MatchesBoard({
                     {match.sportIcon}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="font-heading leading-snug font-bold">
+                    <Link
+                      href={`/matches/${match.id}`}
+                      className="font-heading block leading-snug font-bold hover:underline"
+                    >
                       {match.title}
-                    </p>
+                    </Link>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {match.sportName}
                     </p>
@@ -272,12 +275,12 @@ export function MatchesBoard({
                         </span>
                       ))}
                     </div>
-                    <button
-                      type="button"
-                      className="bg-success-muted text-success rounded-full px-4 py-1.5 text-xs font-semibold"
-                    >
-                      Mời chơi
-                    </button>
+                    <MatchCardAction
+                      matchId={match.id}
+                      role={match.role}
+                      isFull={remaining <= 0}
+                      isOpen={match.isOpen}
+                    />
                   </div>
                 </div>
               </article>

@@ -562,13 +562,14 @@ async function main() {
     },
   ];
 
+  const upcomingIds: string[] = [];
   for (const item of upcoming) {
     const { dayOffset, hour, participants, ...rest } = item;
     const dateTime = new Date();
     dateTime.setDate(dateTime.getDate() + dayOffset);
     dateTime.setHours(hour, 0, 0, 0);
 
-    await prisma.match.create({
+    const created = await prisma.match.create({
       data: {
         ...rest,
         dateTime,
@@ -584,7 +585,9 @@ async function main() {
           },
         },
       },
+      select: { id: true },
     });
+    upcomingIds.push(created.id);
   }
 
   console.log("Tạo thông báo cho lời mời đang chờ...");
@@ -594,6 +597,7 @@ async function main() {
       type: "INVITE",
       title: "Bạn có lời mời trận đấu mới",
       body: "Cầu lông tối thứ 4 - Ba Đình · CLB Cau long Dong Da",
+      payload: { matchId: upcomingIds[1] },
     },
   });
 
