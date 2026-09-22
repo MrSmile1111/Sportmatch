@@ -52,6 +52,7 @@ export function OnboardingWizard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState(1);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [sports, setSports] = useState<string[]>([]);
   const [level, setLevel] = useState<SkillLevel>("Mới chơi");
   const [area, setArea] = useState("");
@@ -85,14 +86,16 @@ export function OnboardingWizard({
 
   function goNext() {
     if (step === TOTAL_STEPS) {
-      startTransition(() => {
-        void completeOnboardingAction({
+      setSaveError(null);
+      startTransition(async () => {
+        const result = await completeOnboardingAction({
           sportIds: sports,
           skillLevel: level,
           area: area.trim(),
           avatar,
           availability: days,
         });
+        setSaveError(result.error);
       });
       return;
     }
@@ -362,6 +365,12 @@ export function OnboardingWizard({
             <ArrowRight className="size-4" />
           </button>
         </div>
+
+        {saveError ? (
+          <p role="alert" className="text-destructive mt-4 text-center text-sm">
+            {saveError}
+          </p>
+        ) : null}
 
         {step === 1 && (
           <button
