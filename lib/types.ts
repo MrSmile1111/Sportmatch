@@ -89,6 +89,10 @@ export type Court = {
   isOpen: boolean;
   lat: number;
   lng: number;
+  /** "sportmatch" = sân tự quản lý; "osm" = đồng bộ từ OpenStreetMap. */
+  source: "sportmatch" | "osm";
+  website: string | null;
+  openingHours: string | null;
 };
 
 export type Rating = {

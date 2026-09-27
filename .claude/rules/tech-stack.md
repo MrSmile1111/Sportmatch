@@ -7,7 +7,9 @@ Dự án dùng stack sau. Không cần hỏi lại user trước khi cài các p
 - **UI components**: xây thủ công theo design system riêng (xem `design-system.md`) — có thể dùng shadcn/ui làm nền tảng primitives (Radix) để tăng tốc, tuỳ chỉnh lại style theo đúng ảnh gốc
 - **Database/ORM**: PostgreSQL + Prisma
 - **Auth**: Auth.js (NextAuth) — email/password (đăng nhập, đăng ký, quên mật khẩu)
-- **Bản đồ**: Leaflet + react-leaflet, tile layer OpenStreetMap (đúng như ảnh gốc, giữ watermark "Leaflet | © OpenStreetMap contributors")
+- **Bản đồ**: Leaflet + react-leaflet, tile layer OpenStreetMap (đúng như ảnh gốc, giữ watermark "Leaflet | © OpenStreetMap contributors"). **Không dùng Google Maps API** (user không tạo được key — chốt 2026-09-27).
+  - Dữ liệu sân thật: **Overpass API** (OpenStreetMap, miễn phí, không key) — `lib/osm/overpass.ts`, lưu vào bảng `Court` theo ô lưới (`lib/data/court-sync.ts`) để lần sau chỉ đọc DB. Overpass công cộng hay quá tải → có server dự phòng.
+  - Chỉ đường: link công khai `google.com/maps/dir/?api=1&destination=lat,lng` (không cần key).
 - **Realtime** (chat, thông báo): Pusher hoặc Supabase Realtime (ưu tiên Supabase nếu cũng dùng Supabase cho Postgres, để giảm số dịch vụ ngoài phải quản lý) — cần chốt cụ thể khi bắt đầu implement chat, nhưng không chặn việc dựng các trang khác trước.
 - **Package manager**: pnpm
 - **Deploy**: chưa chốt (đề xuất Vercel do là Next.js) — hỏi user khi tới lúc deploy.

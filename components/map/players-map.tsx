@@ -43,12 +43,27 @@ export function PlayersMap({
     },
   ];
 
+  const [locateError, setLocateError] = useState<string | null>(null);
+
   function locateMe() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((result) => {
-      setCenter([result.coords.latitude, result.coords.longitude]);
-      setMapKey((value) => value + 1);
-    });
+    if (!navigator.geolocation) {
+      setLocateError("Trình duyệt không hỗ trợ định vị.");
+      return;
+    }
+    setLocateError(null);
+    navigator.geolocation.getCurrentPosition(
+      (result) => {
+        setCenter([result.coords.latitude, result.coords.longitude]);
+        setMapKey((value) => value + 1);
+      },
+      (failure) =>
+        setLocateError(
+          failure.code === failure.PERMISSION_DENIED
+            ? "Bạn đã chặn quyền vị trí. Hãy cho phép trong cài đặt trình duyệt rồi thử lại."
+            : "Không lấy được vị trí hiện tại, thử lại sau.",
+        ),
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
+    );
   }
 
   return (
@@ -81,6 +96,11 @@ export function PlayersMap({
             <RefreshCw className="size-4" />
             Làm mới
           </button>
+          {locateError ? (
+            <p role="alert" className="text-destructive w-full text-right text-xs">
+              {locateError}
+            </p>
+          ) : null}
         </div>
       </div>
 

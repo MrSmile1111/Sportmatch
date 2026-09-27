@@ -42,3 +42,8 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+
+# tài liệu/ảnh tham chiếu cục bộ (không đưa lên repo)
+/*.png
+/*.pdf
+/*.mp3

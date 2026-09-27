@@ -24,4 +24,12 @@ Form nhiều bước trên 1 trang, panel "Tóm tắt trận" bên phải cập 
 Nút "Tạo trận" cam nổi bật cuối trang. Đối chiếu `screencapture-...-main-matches-create-*.png`.
 
 ## Sân bãi (Courts)
-Layout bản đồ (trái, lớn, Leaflet) + danh sách card sân (phải, cuộn): tên sân, khu vực, trạng thái "Mở cửa", giá/giờ, môn thể thao, nút gọi điện & nhắn tin. Filter theo môn (Tất cả/Cầu lông/Pickleball). Bản đồ tự sắp xếp/pin theo vị trí hiện tại. Đối chiếu `screencapture-...-main-courts-*.png`.
+Layout bản đồ (trái, lớn) + danh sách card sân (phải, cuộn): tên sân, khu vực, trạng thái "Mở cửa", giá/giờ, môn thể thao, nút gọi điện & nhắn tin. Filter theo môn (Tất cả/Cầu lông/Pickleball). Bản đồ tự sắp xếp/pin theo vị trí hiện tại. Đối chiếu `screencapture-...-main-courts-*.png`.
+
+Mở rộng theo yêu cầu user (2026-09-27), khác ảnh gốc:
+- Sân = sân trong DB + sân thật trên OpenStreetMap (Overpass, bán kính 10 km, lọc theo tag `sport=*`). Sân OSM thường thiếu địa chỉ/SĐT/giá — hiển thị những gì có.
+- Sân OSM được **lưu vào bảng `Court`** (`source = OSM`, id `osm-<type>-<id>`) theo ô lưới 0.1° (~11 km), ô đã tải ghi ở `CourtSyncCell`, hết hạn sau 30 ngày hoặc khi danh sách môn đổi (`lib/data/court-sync.ts`). Mở trang = đọc DB (~1s); chỉ khu vực mới mới gọi Overpass (~10–15s). Sân bị xoá trên OSM hiện chưa tự xoá khỏi DB.
+- Mở trang tự xin quyền định vị; từ chối thì dùng khu vực trong hồ sơ. Việc tìm sân chạy ở client để trang hiện ngay.
+- Filter môn mặc định = môn đầu tiên trong hồ sơ người dùng.
+- Bấm pin/card → thẻ nổi trên bản đồ (tên, khoảng cách, nút "Chỉ đường" mở Google Maps web, "Gọi" nếu có SĐT) + panel chi tiết bên phải.
+- Không có ảnh sân (user quyết định bỏ, 2026-09-27).

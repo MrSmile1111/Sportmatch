@@ -60,6 +60,11 @@ enum NotificationType {
   SYSTEM
 }
 
+enum CourtSource {
+  SPORTMATCH // sân do SportMatch quản lý (seed / nhập tay)
+  OSM // sân đồng bộ từ OpenStreetMap, id dạng "osm-node-123"
+}
+
 // ---------------------------------------------------------------- auth + user
 
 model User {
@@ -239,10 +244,27 @@ model Court {
   lng          Float
   createdAt    DateTime @default(now())
 
+  source       CourtSource @default(SPORTMATCH)
+  website      String?
+  /// Giờ mở cửa dạng chuỗi OSM (vd "Mo-Su 05:00-22:00").
+  openingHours String?
+  /// Lần cuối đồng bộ từ nguồn ngoài (chỉ sân OSM).
+  syncedAt     DateTime?
+
   sports  CourtSport[]
   matches Match[]
 
   @@index([area])
+  @@index([lat, lng])
+}
+
+/// Ô lưới ~0.1° (~11 km) đã tải sân từ OpenStreetMap — tránh gọi Overpass lại
+/// mỗi lần mở trang. Hết hạn sau một thời gian hoặc khi danh sách môn đổi.
+model CourtSyncCell {
+  id       String   @id // "210,1058" = floor(lat*10), floor(lng*10)
+  /// Các sport id đã đồng bộ cho ô này, sắp xếp, nối bằng dấu phẩy.
+  sports   String
+  syncedAt DateTime
 }
 
 model CourtSport {
