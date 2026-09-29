@@ -107,6 +107,22 @@ model User {
   @@index([area])
 }
 
+model Club {
+  id          String   @id @default(cuid())
+  name        String
+  area        String
+  sportType   String
+  logo        String   @default("🏸")
+  rating      Float    @default(4.8)
+  description String   @default("")
+  memberCount Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sportType])
+  @@index([area])
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
