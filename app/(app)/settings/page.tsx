@@ -23,7 +23,7 @@ export default async function SettingsPage() {
         birthday: currentUser.birthday,
         bio: currentUser.bio,
         sports: currentUser.sports,
-        availability: currentUser.availability,
+        availabilitySlots: currentUser.availabilitySlots,
       }}
       sports={sports}
     />

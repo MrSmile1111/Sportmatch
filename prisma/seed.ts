@@ -424,8 +424,22 @@ async function main() {
         emailVerified: new Date(),
         passwordHash,
         onboardedAt: new Date(),
-        sports: { create: userSports },
-        availability: { create: availability.map((day) => ({ day })) },
+        // Dữ liệu demo: khu vực chơi = quận của user, mục đích "Giao lưu";
+        // lịch rảnh ngày thường 18:00–21:00, cuối tuần 07:00–11:00.
+        sports: {
+          create: userSports.map((sport) => ({
+            ...sport,
+            purposes: ["SOCIAL"],
+            preferredAreas: [user.area.split(",")[0].trim()],
+          })),
+        },
+        availability: {
+          create: availability.map((day) =>
+            day === "SAT" || day === "SUN"
+              ? { day, startMinute: 7 * 60, endMinute: 11 * 60 }
+              : { day, startMinute: 18 * 60, endMinute: 21 * 60 },
+          ),
+        },
       },
     });
   }

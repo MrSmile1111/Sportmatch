@@ -3,6 +3,7 @@ import {
   MatchStatus as DbMatchStatus,
   MatchVisibility as DbMatchVisibility,
   ParticipantStatus as DbParticipantStatus,
+  PlayPurpose as DbPlayPurpose,
   SkillLevel as DbSkillLevel,
   Weekday as DbWeekday,
 } from "@/lib/generated/prisma/enums";
@@ -11,6 +12,7 @@ import type {
   MatchParticipant,
   MatchStatus,
   MatchVisibility,
+  PlayPurpose,
   SkillLevel,
   SkillRequirement,
   Weekday,
@@ -31,6 +33,18 @@ export const SKILL_FROM_DB: Record<DbSkillLevel, SkillLevel> = {
   BEGINNER: "Mới chơi",
   INTERMEDIATE: "Trung cấp",
   ADVANCED: "Chuyên nghiệp",
+};
+
+export const PURPOSE_TO_DB: Record<PlayPurpose, DbPlayPurpose> = {
+  "Giao lưu": DbPlayPurpose.SOCIAL,
+  "Luyện tập": DbPlayPurpose.PRACTICE,
+  "Thi đấu": DbPlayPurpose.COMPETITIVE,
+};
+
+export const PURPOSE_FROM_DB: Record<DbPlayPurpose, PlayPurpose> = {
+  SOCIAL: "Giao lưu",
+  PRACTICE: "Luyện tập",
+  COMPETITIVE: "Thi đấu",
 };
 
 export const GENDER_TO_DB: Record<Gender, DbGender> = {

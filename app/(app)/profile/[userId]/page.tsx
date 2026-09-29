@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  CalendarDays,
   Crown,
   MapPin,
   Shield,
@@ -12,6 +11,9 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
+import { AvailabilityCard } from "@/components/profile/availability-card";
+import { ProfileHeader } from "@/components/profile/profile-header";
+import { SportProfileCard } from "@/components/profile/sport-profile-card";
 import { calculateScore, getRankTier } from "@/lib/ranking";
 import { getSports } from "@/lib/data/sports";
 import { getCurrentUser, getUserById, getUsers } from "@/lib/data/users";
@@ -99,52 +101,38 @@ export default async function ProfilePage({
     { label: "Đánh giá cộng đồng", value: Math.min(100, user.communityVotes * 2) },
   ];
 
-  const isMe = user.id === currentUser.id;
+  const isOwnProfile = user.id === currentUser.id;
 
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-10">
-      <section className="from-brand/25 relative overflow-hidden rounded-3xl bg-gradient-to-br via-card to-card p-8">
-        <div className="flex flex-wrap items-start gap-6">
-          <div className="relative">
-            <span className="bg-brand-gradient flex size-24 items-center justify-center rounded-full text-5xl ring-4 ring-background">
-              {user.avatar}
-            </span>
-            {user.isOnline ? (
-              <span className="bg-success absolute right-1 bottom-1 size-4 rounded-full ring-2 ring-background" />
-            ) : null}
-          </div>
-
+      <ProfileHeader
+        name={user.name}
+        avatarEmoji={user.avatar}
+        avatarUrl={user.avatarUrl}
+        coverImageUrl={user.coverImageUrl}
+        isOnline={user.isOnline}
+        isOwnProfile={isOwnProfile}
+      >
+        <div className="flex flex-wrap items-start gap-4">
           <div className="min-w-0 flex-1">
-            <h1 className="text-3xl font-extrabold tracking-tight">
+            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
               {user.name}
             </h1>
-            <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="size-4 shrink-0" />
-              {user.area}
-            </p>
-            <p className="mt-4 text-sm">
-              {user.bio || "Người chơi chưa cập nhật giới thiệu cá nhân."}
-            </p>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              {user.sports.map((entry) => (
-                <span
-                  key={entry.sportId}
-                  className="bg-brand/15 text-brand flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold"
-                >
-                  <span>{sportMap.get(entry.sportId)?.icon ?? "🏅"}</span>
-                  {sportMap.get(entry.sportId)?.name ?? entry.sportId}
-                </span>
-              ))}
-              {user.sports[0] ? (
-                <span className="rounded-full bg-teal-400/15 px-3.5 py-1.5 text-sm font-semibold text-teal-400">
-                  {user.sports[0].skillLevel}
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <MapPin className="size-4 shrink-0" />
+                {user.area}
+              </span>
+              {user.isOnline ? (
+                <span className="text-success flex items-center gap-1.5 font-semibold">
+                  <span className="size-2 rounded-full bg-current" />
+                  Online
                 </span>
               ) : null}
             </div>
           </div>
 
-          {isMe ? (
+          {isOwnProfile ? (
             <Link
               href="/settings"
               className="bg-brand-gradient inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -154,11 +142,41 @@ export default async function ProfilePage({
             </Link>
           ) : null}
         </div>
-      </section>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[320px_1fr] lg:items-start">
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-border bg-card p-6">
+        <p className="mt-4 text-sm">
+          {user.bio || "Người chơi chưa cập nhật giới thiệu cá nhân."}
+        </p>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {user.sports.map((entry) => (
+            <span
+              key={entry.sportId}
+              className="bg-brand/15 text-brand flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold"
+            >
+              <span>{sportMap.get(entry.sportId)?.icon ?? "🏅"}</span>
+              {sportMap.get(entry.sportId)?.name ?? entry.sportId}
+            </span>
+          ))}
+          {user.sports[0] ? (
+            <span className="rounded-full bg-teal-400/15 px-3.5 py-1.5 text-sm font-semibold text-teal-400">
+              {user.sports[0].skillLevel}
+            </span>
+          ) : null}
+        </div>
+      </ProfileHeader>
+
+      {/* Mobile: 1 cột theo thứ tự ưu tiên ghép trận (order-*); desktop: giữ
+          lưới 2 cột, cột phải mở đầu bằng Môn thể thao, cột trái bằng Lịch rảnh. */}
+      <div className="mt-6 flex flex-col gap-6 lg:grid lg:grid-cols-[320px_1fr] lg:items-start">
+        <div className="contents lg:block lg:space-y-6">
+          <div className="order-2">
+            <AvailabilityCard
+              slots={user.availabilitySlots}
+              isOwnProfile={isOwnProfile}
+            />
+          </div>
+
+          <section className="order-3 rounded-2xl border border-border bg-card p-6">
             <h2 className="font-heading text-lg font-bold">Thống kê</h2>
             <dl className="mt-4">
               <StatRow
@@ -205,55 +223,18 @@ export default async function ProfilePage({
               </p>
             </div>
           </section>
-
-          <section className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="font-heading flex items-center gap-2 text-lg font-bold">
-              <CalendarDays className="text-brand size-5" />
-              Lịch rảnh
-            </h2>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {user.availability.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Chưa chọn lịch rảnh.
-                </p>
-              ) : (
-                user.availability.map((day) => (
-                  <span
-                    key={day}
-                    className="bg-brand/10 text-brand rounded-full px-3 py-1.5 text-sm font-medium"
-                  >
-                    {day}
-                  </span>
-                ))
-              )}
-            </div>
-          </section>
         </div>
 
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="font-heading text-lg font-bold">Môn thể thao</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              {user.sports.map((entry) => (
-                <div
-                  key={entry.sportId}
-                  className="rounded-2xl border border-border bg-secondary/30 p-5"
-                >
-                  <span className="text-3xl">
-                    {sportMap.get(entry.sportId)?.icon ?? "🏅"}
-                  </span>
-                  <p className="font-heading mt-3 font-bold">
-                    {sportMap.get(entry.sportId)?.name ?? entry.sportId}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {entry.skillLevel}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
+        <div className="contents lg:block lg:space-y-6">
+          <div className="order-1">
+            <SportProfileCard
+              sports={user.sports}
+              sportMap={sportMap}
+              isOwnProfile={isOwnProfile}
+            />
+          </div>
 
-          <section className="rounded-2xl border border-border bg-card p-6">
+          <section className="order-4 rounded-2xl border border-border bg-card p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="font-heading flex items-center gap-2 text-lg font-bold">
@@ -331,7 +312,7 @@ export default async function ProfilePage({
             </Link>
           </section>
 
-          <section className="rounded-2xl border border-border bg-card p-6">
+          <section className="order-5 rounded-2xl border border-border bg-card p-6">
             <h2 className="font-heading text-lg font-bold">Chi tiết uy tín</h2>
             <ul className="mt-5 space-y-5">
               {trustDetails.map((item) => (
