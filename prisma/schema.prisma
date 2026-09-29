@@ -24,6 +24,13 @@ enum Gender {
   OTHER // Khác
 }
 
+/// Mục đích chơi của người dùng với một môn — dùng cho matchmaking.
+enum PlayPurpose {
+  SOCIAL // Giao lưu
+  PRACTICE // Luyện tập
+  COMPETITIVE // Thi đấu
+}
+
 enum Weekday {
   MON // Thứ hai
   TUE // Thứ ba
@@ -75,8 +82,10 @@ model User {
   passwordHash  String?
   image         String?
 
-  // Avatar hệ thống là emoji (theo ảnh gốc); `image` dành cho ảnh upload sau này.
+  // Avatar hệ thống là emoji (theo ảnh gốc) — dùng làm fallback khi chưa có ảnh.
+  // `image` là URL ảnh đại diện đã upload, `coverImage` là URL ảnh bìa hồ sơ.
   avatar         String    @default("🧑")
+  coverImage     String?
   bio            String    @default("")
   area           String    @default("")
   lat            Float?
@@ -162,25 +171,53 @@ model Sport {
   courts  CourtSport[]
 }
 
+/// Hồ sơ thể thao của user theo từng môn — nguồn dữ liệu chính cho matchmaking
+/// (cùng môn, trình độ, mục đích chơi, khu vực, sân yêu thích).
 model UserSport {
-  userId     String
-  sportId    String
-  skillLevel SkillLevel @default(BEGINNER)
+  userId         String
+  sportId        String
+  skillLevel     SkillLevel    @default(BEGINNER)
+  purposes       PlayPurpose[] @default([])
+  /// Tên khu vực chuẩn trong `lib/areas.ts` (vd "Tây Hồ").
+  preferredAreas String[]      @default([])
 
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sport Sport @relation(fields: [sportId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sport          Sport            @relation(fields: [sportId], references: [id], onDelete: Cascade)
+  favoriteCourts UserSportCourt[]
 
   @@id([userId, sportId])
-  @@index([sportId])
+  @@index([sportId, skillLevel])
+  @@index([purposes], type: Gin)
+  @@index([preferredAreas], type: Gin)
 }
 
+/// Sân yêu thích của user cho một môn — chỉ trỏ tới sân có sẵn trong `Court`.
+model UserSportCourt {
+  userId  String
+  sportId String
+  courtId String
+
+  userSport UserSport @relation(fields: [userId, sportId], references: [userId, sportId], onDelete: Cascade)
+  court     Court     @relation(fields: [courtId], references: [id], onDelete: Cascade)
+
+  @@id([userId, sportId, courtId])
+  @@index([courtId])
+}
+
+/// Khung giờ rảnh hằng tuần. Giờ lưu bằng số phút tính từ 00:00 (0–1439) để
+/// so khớp lịch giao nhau chỉ bằng phép so sánh: a.start < b.end && b.start < a.end.
+/// Một ngày có thể có nhiều khung; migration có CHECK end > start.
 model Availability {
-  userId String
-  day    Weekday
+  id          String  @id @default(cuid())
+  userId      String
+  day         Weekday
+  startMinute Int
+  endMinute   Int
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([userId, day])
+  @@unique([userId, day, startMinute, endMinute])
+  @@index([day, startMinute, endMinute])
 }
 
 // ---------------------------------------------------------------- trận đấu
@@ -251,8 +288,9 @@ model Court {
   /// Lần cuối đồng bộ từ nguồn ngoài (chỉ sân OSM).
   syncedAt     DateTime?
 
-  sports  CourtSport[]
-  matches Match[]
+  sports      CourtSport[]
+  matches     Match[]
+  favoritedBy UserSportCourt[]
 
   @@index([area])
   @@index([lat, lng])

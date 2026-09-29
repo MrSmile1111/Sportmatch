@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AppHeader } from "@/components/layout/app-header";
 import { DiscoverIntroProvider } from "@/components/discover/discover-intro-provider";
+import { Toaster } from "@/components/ui/toast";
 import { countUnreadMessages } from "@/lib/data/chat";
 import { countUnreadNotifications } from "@/lib/data/notifications";
 import { getCurrentUser } from "@/lib/data/users";
@@ -28,7 +29,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         unreadMessages={unreadMessages}
       />
       <DiscoverIntroProvider>
-        <div className="flex-1">{children}</div>
+        <Toaster>
+          <div className="flex-1">{children}</div>
+        </Toaster>
       </DiscoverIntroProvider>
     </>
   );
