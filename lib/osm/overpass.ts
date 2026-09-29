@@ -11,6 +11,8 @@ import "server-only";
 const OSM_SPORT_TAGS: Record<string, string[]> = {
   badminton: ["badminton"],
   pickleball: ["pickleball"],
+  football: ["soccer"],
+  bowling: ["10pin"],
 };
 
 // Server chính hay báo quá tải giờ cao điểm → thử lần lượt từng server.
@@ -49,8 +51,9 @@ export type BBox = { south: number; west: number; north: number; east: number };
 
 function osmTagsFor(sportId: string): string[] {
   const tags = OSM_SPORT_TAGS[sportId] ?? [sportId];
-  // Chỉ nhận chữ thường + gạch dưới để không chèn được gì vào câu truy vấn.
-  return tags.filter((tag) => /^[a-z_]+$/.test(tag));
+  // Chỉ nhận chữ thường, chữ số + gạch dưới (vd "10pin") để không chèn được
+  // gì vào câu truy vấn.
+  return tags.filter((tag) => /^[a-z0-9_]+$/.test(tag));
 }
 
 function formatAddress(tags: Record<string, string>): string {

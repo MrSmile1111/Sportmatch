@@ -166,6 +166,11 @@ model Sport {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
+  /// Khoảng "Số người cần" khi tạo trận của môn này.
+  minPlayers     Int @default(2)
+  maxPlayers     Int @default(20)
+  defaultPlayers Int @default(4)
+
   users   UserSport[]
   matches Match[]
   courts  CourtSport[]

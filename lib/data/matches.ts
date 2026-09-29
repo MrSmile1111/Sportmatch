@@ -138,19 +138,97 @@ export type NewMatchInput = {
   visibility: MatchVisibility;
   description: string;
   invitedUserIds: string[];
+  /** Sân chọn từ danh sách; null = "Sân khác – tự nhập tên sân". */
+  courtId: string | null;
 };
+
+/**
+ * Trận chưa có thời lượng → coi mỗi trận chiếm sân 2 giờ: hai trận cùng sân,
+ * cùng môn cách nhau dưới 2 giờ là trùng giờ.
+ */
+const COURT_BUSY_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+/** Sân (trong `courtIds`) đã có trận chưa kết thúc cùng môn, trùng giờ `dateTime`. */
+export async function getBusyCourtIds(
+  sportId: string,
+  dateTime: Date,
+  courtIds?: string[],
+): Promise<string[]> {
+  const rows = await prisma.match.findMany({
+    where: {
+      sportId,
+      courtId: courtIds ? { in: courtIds } : { not: null },
+      status: { not: "COMPLETED" },
+      dateTime: {
+        gt: new Date(dateTime.getTime() - COURT_BUSY_WINDOW_MS),
+        lt: new Date(dateTime.getTime() + COURT_BUSY_WINDOW_MS),
+      },
+    },
+    select: { courtId: true },
+    distinct: ["courtId"],
+  });
+  return rows.flatMap((row) => (row.courtId ? [row.courtId] : []));
+}
 
 export async function createMatch(input: NewMatchInput): Promise<Match> {
   const hostId = await requireUserId();
+
+  const sport = await prisma.sport.findUnique({
+    where: { id: input.sportId },
+    select: { isActive: true, minPlayers: true, maxPlayers: true },
+  });
+  if (!sport?.isActive) {
+    throw new MatchActionError("Môn thể thao không hợp lệ.");
+  }
+  if (
+    !Number.isInteger(input.maxPlayers) ||
+    input.maxPlayers < sport.minPlayers ||
+    input.maxPlayers > sport.maxPlayers
+  ) {
+    throw new MatchActionError(
+      `Số người cần phải từ ${sport.minPlayers} đến ${sport.maxPlayers}.`,
+    );
+  }
+
+  const dateTime = new Date(input.dateTime);
+  if (Number.isNaN(dateTime.getTime())) {
+    throw new MatchActionError("Ngày giờ không hợp lệ.");
+  }
+
+  if (input.courtId) {
+    const court = await prisma.court.findUnique({
+      where: { id: input.courtId },
+      select: {
+        source: true,
+        isOpen: true,
+        sports: { where: { sportId: input.sportId }, select: { sportId: true } },
+      },
+    });
+    if (!court || court.sports.length === 0) {
+      throw new MatchActionError("Sân không hợp lệ với môn đã chọn.");
+    }
+    // Chỉ sân SportMatch mới có trạng thái mở cửa; sân OSM coi như luôn mở.
+    const closed = court.source === "SPORTMATCH" && !court.isOpen;
+    const busy =
+      closed ||
+      (await getBusyCourtIds(input.sportId, dateTime, [input.courtId]))
+        .length > 0;
+    if (busy) {
+      throw new MatchActionError(
+        "Sân đã đủ vào giờ này, vui lòng chọn sân khác.",
+      );
+    }
+  }
 
   const match = await prisma.match.create({
     data: {
       sportId: input.sportId,
       hostId,
+      courtId: input.courtId,
       title: input.title,
       courtName: input.courtName,
       address: input.address,
-      dateTime: new Date(input.dateTime),
+      dateTime,
       maxPlayers: input.maxPlayers,
       skillRequirement: skillRequirementToDb(input.skillRequirement),
       visibility: VISIBILITY_TO_DB[input.visibility],

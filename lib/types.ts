@@ -5,6 +5,13 @@ export type Sport = {
   icon: string;
 };
 
+/** Môn kèm khoảng "Số người cần" khi tạo trận. */
+export type SportWithPlayers = Sport & {
+  minPlayers: number;
+  maxPlayers: number;
+  defaultPlayers: number;
+};
+
 export const SKILL_LEVELS = ["Mới chơi", "Trung cấp", "Chuyên nghiệp"] as const;
 export type SkillLevel = (typeof SKILL_LEVELS)[number];
 
