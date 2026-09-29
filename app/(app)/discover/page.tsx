@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import {
-  DiscoverBoard,
-  type DiscoverUser,
-} from "@/components/discover/discover-board";
+import type { DiscoverUser } from "@/components/discover/discover-board";
+import { DiscoverExperience } from "@/components/discover/discover-experience";
 import { calculateAge } from "@/lib/format";
 import { getSports } from "@/lib/data/sports";
 import { getCurrentUser, getUsers } from "@/lib/data/users";
@@ -45,7 +43,7 @@ export default async function DiscoverPage() {
     }));
 
   return (
-    <DiscoverBoard
+    <DiscoverExperience
       users={candidates}
       sports={sports}
       myAvailability={currentUser.availability}

@@ -87,7 +87,7 @@ export function AppHeader({
 
           <Link
             href="/matches/create"
-            className="bg-brand-gradient shadow-brand/25 inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-opacity hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#fff0e6] px-5 py-2.5 text-sm font-semibold text-[#ff5722] shadow-sm shadow-orange-950/5 transition-all duration-200 ease-in-out hover:bg-orange-400 hover:text-white hover:shadow-orange-500/20 active:bg-[#e64a19] active:text-white"
           >
             <Plus className="size-4" />
             Tạo trận
