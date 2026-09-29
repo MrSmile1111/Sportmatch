@@ -11,6 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "db:add-players": "tsx prisma/add-players.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },

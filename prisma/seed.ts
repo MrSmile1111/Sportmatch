@@ -2,11 +2,8 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../lib/generated/prisma/client";
-import type {
-  Gender,
-  SkillLevel,
-  Weekday,
-} from "../lib/generated/prisma/enums";
+import { extraPlayers } from "./extra-players";
+import { createSeedUser, type SeedUser } from "./seed-users";
 
 const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 
@@ -110,29 +107,6 @@ const courts = [
     lng: 105.7788,
   },
 ];
-
-type SeedUser = {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  bio: string;
-  area: string;
-  lat: number;
-  lng: number;
-  gender: Gender;
-  birthday: string;
-  trustScore: number;
-  isOnline: boolean;
-  isPro: boolean;
-  communityVotes: number;
-  sports: { sportId: string; skillLevel: SkillLevel }[];
-  availability: Weekday[];
-  /** Mức sao mong muốn — dùng để sinh dữ liệu Rating quanh giá trị này. */
-  targetStars: number;
-  /** Số trận đã hoàn tất mong muốn — dùng để phân bổ trận trong seed. */
-  targetMatches: number;
-};
 
 const users: SeedUser[] = [
   {
@@ -425,36 +399,11 @@ async function main() {
   console.log("Tạo người dùng...");
   const passwordHash = await bcrypt.hash(SEED_PASSWORD, 12);
   for (const user of users) {
-    const { sports: userSports, availability, targetStars, targetMatches, ...rest } =
-      user;
-    void targetStars;
-    void targetMatches;
-
-    await prisma.user.create({
-      data: {
-        ...rest,
-        birthday: new Date(user.birthday),
-        emailVerified: new Date(),
-        passwordHash,
-        onboardedAt: new Date(),
-        // Dữ liệu demo: khu vực chơi = quận của user, mục đích "Giao lưu";
-        // lịch rảnh ngày thường 18:00–21:00, cuối tuần 07:00–11:00.
-        sports: {
-          create: userSports.map((sport) => ({
-            ...sport,
-            purposes: ["SOCIAL"],
-            preferredAreas: [user.area.split(",")[0].trim()],
-          })),
-        },
-        availability: {
-          create: availability.map((day) =>
-            day === "SAT" || day === "SUN"
-              ? { day, startMinute: 7 * 60, endMinute: 11 * 60 }
-              : { day, startMinute: 18 * 60, endMinute: 21 * 60 },
-          ),
-        },
-      },
-    });
+    await createSeedUser(prisma, user, passwordHash);
+  }
+  // Người chơi các môn mới: chỉ có hồ sơ, không tham gia trận mẫu bên dưới.
+  for (const user of extraPlayers) {
+    await createSeedUser(prisma, user, passwordHash);
   }
 
   console.log("Tạo trận đã hoàn tất + đánh giá...");
@@ -462,6 +411,9 @@ async function main() {
   // khi tất cả đủ chỉ tiêu, rồi sinh Rating giữa các đồng đội trong trận đó.
   const remaining = new Map(users.map((user) => [user.id, user.targetMatches]));
   const starTarget = new Map(users.map((user) => [user.id, user.targetStars]));
+  const sportsWithCourts = sports.filter((sport) =>
+    courts.some((court) => court.sportIds.includes(sport.id)),
+  );
   let completedCount = 0;
   let ratingCount = 0;
   let daysAgo = 3;
@@ -479,7 +431,8 @@ async function main() {
       lineup.push(candidates.splice(index, 1)[0]);
     }
 
-    const sport = pick(sports);
+    // Chỉ các môn có sân mẫu (Cầu lông, Pickleball) — môn mới chưa có sân seed.
+    const sport = pick(sportsWithCourts);
     const court = pick(courts.filter((item) => item.sportIds.includes(sport.id)));
     const playedAt = new Date();
     playedAt.setDate(playedAt.getDate() - daysAgo);
@@ -629,7 +582,7 @@ async function main() {
   });
 
   console.log("");
-  console.log(`✓ ${users.length} người dùng`);
+  console.log(`✓ ${users.length + extraPlayers.length} người dùng`);
   console.log(`✓ ${sports.length} môn thể thao, ${courts.length} sân`);
   console.log(
     `✓ ${completedCount} trận đã hoàn tất, ${upcoming.length} trận sắp diễn ra`,
