@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   title: "Tạo trận đấu · SportMatch",
 };
 
+const DEFAULT_CENTER = { lat: 21.0285, lng: 105.8542 };
+
 export default async function CreateMatchPage() {
   const [sports, users, currentUser] = await Promise.all([
     getSports(),
@@ -28,5 +30,12 @@ export default async function CreateMatchPage() {
       skillLabel: user.sports.map((sport) => sport.skillLevel).join(" · "),
     }));
 
-  return <CreateMatchForm sports={sports} users={invitable} />;
+  // Như trang Sân bãi: hồ sơ chưa có toạ độ → tạm dùng trung tâm Hà Nội,
+  // trình duyệt sẽ tự định vị lại sau khi trang hiện ra.
+  const hasCoords = currentUser.lat !== 0 || currentUser.lng !== 0;
+  const origin = hasCoords
+    ? { lat: currentUser.lat, lng: currentUser.lng }
+    : DEFAULT_CENTER;
+
+  return <CreateMatchForm sports={sports} users={invitable} origin={origin} />;
 }

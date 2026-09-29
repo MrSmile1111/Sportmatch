@@ -38,6 +38,19 @@ const SEED_PASSWORD = "SportMatch123";
 const sports = [
   { id: "badminton", slug: "cau-long", name: "Cầu lông", icon: "🏸", sortOrder: 1 },
   { id: "pickleball", slug: "pickleball", name: "Pickleball", icon: "🏓", sortOrder: 2 },
+  // Giữ khớp với migration 20260929000000_more_sports.
+  { id: "football", slug: "bong-da", name: "Bóng đá", icon: "⚽", sortOrder: 3, minPlayers: 10, maxPlayers: 22, defaultPlayers: 14 },
+  { id: "futsal", slug: "futsal", name: "Futsal", icon: "🥅", sortOrder: 4, minPlayers: 8, maxPlayers: 14, defaultPlayers: 10 },
+  { id: "tennis", slug: "tennis", name: "Tennis", icon: "🎾", sortOrder: 5, minPlayers: 2, maxPlayers: 4, defaultPlayers: 4 },
+  { id: "table_tennis", slug: "bong-ban", name: "Bóng bàn", icon: "⚪", sortOrder: 6, minPlayers: 2, maxPlayers: 4, defaultPlayers: 2 },
+  { id: "volleyball", slug: "bong-chuyen", name: "Bóng chuyền", icon: "🏐", sortOrder: 7, minPlayers: 8, maxPlayers: 14, defaultPlayers: 12 },
+  { id: "basketball", slug: "bong-ro", name: "Bóng rổ", icon: "🏀", sortOrder: 8, minPlayers: 4, maxPlayers: 12, defaultPlayers: 10 },
+  { id: "handball", slug: "bong-nem", name: "Bóng ném", icon: "🤾", sortOrder: 9, minPlayers: 10, maxPlayers: 16, defaultPlayers: 14 },
+  { id: "golf", slug: "golf", name: "Golf", icon: "⛳", sortOrder: 10, minPlayers: 2, maxPlayers: 4, defaultPlayers: 4 },
+  { id: "billiards", slug: "bi-a", name: "Bi-a", icon: "🎱", sortOrder: 11, minPlayers: 2, maxPlayers: 4, defaultPlayers: 2 },
+  { id: "bowling", slug: "bowling", name: "Bowling", icon: "🎳", sortOrder: 12, minPlayers: 2, maxPlayers: 6, defaultPlayers: 4 },
+  { id: "swimming", slug: "boi-loi", name: "Bơi lội", icon: "🏊", sortOrder: 13, minPlayers: 2, maxPlayers: 10, defaultPlayers: 4 },
+  { id: "boxing", slug: "boxing", name: "Boxing", icon: "🥊", sortOrder: 14, minPlayers: 2, maxPlayers: 8, defaultPlayers: 2 },
 ];
 
 const courts = [

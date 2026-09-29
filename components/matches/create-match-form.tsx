@@ -1,11 +1,20 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
   CalendarDays,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Globe,
   Lock,
@@ -14,8 +23,18 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { createMatchAction } from "@/app/(app)/matches/create/actions";
-import { SKILL_LEVELS, type MatchVisibility } from "@/lib/types";
+import { searchCourtsAction, type CourtResult } from "@/app/(app)/courts/actions";
+import {
+  createMatchAction,
+  getBusyCourtIdsAction,
+} from "@/app/(app)/matches/create/actions";
+import { CourtPicker } from "@/components/matches/court-picker";
+import type { LatLng } from "@/lib/geo";
+import {
+  SKILL_LEVELS,
+  type MatchVisibility,
+  type SportWithPlayers,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export type InvitableUser = {
@@ -28,6 +47,20 @@ export type InvitableUser = {
 };
 
 const SKILL_OPTIONS = ["Bất kỳ", ...SKILL_LEVELS] as const;
+
+/** Số môn hiện sẵn (3 cột × 2 hàng), còn lại nằm sau nút "Xem thêm". */
+const VISIBLE_SPORT_COUNT = 6;
+
+// Khoảng "Số người cần" khi chưa chọn môn — như trước khi có khoảng theo môn.
+const DEFAULT_PLAYER_RANGE = { minPlayers: 2, maxPlayers: 20 };
+
+const GEO_OPTIONS: PositionOptions = {
+  enableHighAccuracy: false,
+  timeout: 10_000,
+  maximumAge: 5 * 60_000,
+};
+
+const COURT_FULL_MESSAGE = "Sân đã đủ vào giờ này, vui lòng chọn sân khác.";
 
 const VISIBILITY_OPTIONS: {
   id: MatchVisibility;
@@ -58,11 +91,27 @@ const VISIBILITY_OPTIONS: {
 export function CreateMatchForm({
   sports,
   users,
+  origin,
 }: {
-  sports: { id: string; name: string; icon: string }[];
+  sports: SportWithPlayers[];
   users: InvitableUser[];
+  origin: LatLng;
 }) {
   const [sportId, setSportId] = useState("");
+  const [showAllSports, setShowAllSports] = useState(false);
+
+  // Chọn sân: danh sách sân của môn quanh vị trí, sân đang chọn, hoặc tự nhập.
+  const [me, setMe] = useState<LatLng | null>(null);
+  const [courts, setCourts] = useState<CourtResult[]>([]);
+  const [courtsLoading, setCourtsLoading] = useState(false);
+  const [courtsError, setCourtsError] = useState<string | null>(null);
+  const [busyCourtIds, setBusyCourtIds] = useState<string[]>([]);
+  const [selectedCourt, setSelectedCourt] = useState<CourtResult | null>(null);
+  const [manualCourt, setManualCourt] = useState(false);
+  const [courtNotice, setCourtNotice] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const latestCourtSearch = useRef(0);
+  const latestBusyCheck = useRef(0);
   const [courtName, setCourtName] = useState("");
   const [address, setAddress] = useState("");
   const [date, setDate] = useState("");
@@ -76,6 +125,138 @@ export function CreateMatchForm({
   const [pending, startTransition] = useTransition();
 
   const sport = sports.find((item) => item.id === sportId);
+  const { minPlayers, maxPlayers: playerLimit } = sport ?? DEFAULT_PLAYER_RANGE;
+  const sliderPercent =
+    playerLimit > minPlayers
+      ? ((maxPlayers - minPlayers) / (playerLimit - minPlayers)) * 100
+      : 100;
+
+  const hiddenSports = sports.slice(VISIBLE_SPORT_COUNT);
+  const visibleSports = showAllSports
+    ? sports
+    : sports.slice(0, VISIBLE_SPORT_COUNT);
+  const selectedHiddenSport = hiddenSports.find((item) => item.id === sportId);
+
+  const reference = me ?? origin;
+  const busySet = useMemo(() => new Set(busyCourtIds), [busyCourtIds]);
+  // Đã đủ = sân SportMatch đang đóng cửa, hoặc đã có trận khác trùng giờ.
+  const isCourtFull = (court: CourtResult) =>
+    court.isOpen === false || busySet.has(court.id);
+
+  // Kết quả trả về bất đồng bộ → đọc sân đang chọn qua ref, không qua closure cũ.
+  const selectedCourtRef = useRef<CourtResult | null>(null);
+
+  function clearCourt() {
+    selectedCourtRef.current = null;
+    setSelectedCourt(null);
+    setCourtName("");
+    setAddress("");
+  }
+
+  function selectCourt(court: CourtResult) {
+    selectedCourtRef.current = court;
+    setSelectedCourt(court);
+    setManualCourt(false);
+    setCourtName(court.name);
+    // Địa chỉ đã gộp sẵn quận/huyện; sân không có cả hai thì để trống tự gõ.
+    setAddress(court.address);
+    setCourtNotice(null);
+  }
+
+  function selectManualCourt() {
+    if (manualCourt) return;
+    clearCourt();
+    setManualCourt(true);
+    setCourtNotice(null);
+  }
+
+  function loadCourts(nextSportId: string, center: LatLng) {
+    const requestId = ++latestCourtSearch.current;
+    // Xoá danh sách môn cũ để không chọn nhầm sân trong lúc đang tải.
+    setCourts([]);
+    setCourtsLoading(true);
+    setCourtsError(null);
+    searchCourtsAction(nextSportId, center)
+      .then((result) => applyCourts(requestId, result.courts, result.error))
+      .catch(() =>
+        applyCourts(
+          requestId,
+          [],
+          "Không tải được danh sách sân, thử lại sau.",
+        ),
+      );
+  }
+
+  function applyCourts(
+    requestId: number,
+    list: CourtResult[],
+    error: string | null,
+  ) {
+    if (requestId !== latestCourtSearch.current) return;
+    setCourts(list);
+    setCourtsError(error);
+    setCourtsLoading(false);
+    // Sân đang chọn không có môn mới (hoặc ngoài vùng tìm) → bỏ chọn.
+    const current = selectedCourtRef.current;
+    if (current && !list.some((court) => court.id === current.id)) {
+      clearCourt();
+    }
+  }
+
+  function checkBusyCourts(nextSportId: string, nextDate: string, nextTime: string) {
+    const requestId = ++latestBusyCheck.current;
+    if (!nextSportId || !nextDate || !nextTime) {
+      setBusyCourtIds([]);
+      return;
+    }
+    getBusyCourtIdsAction(nextSportId, `${nextDate}T${nextTime}:00`)
+      .then((ids) => {
+        if (requestId !== latestBusyCheck.current) return;
+        setBusyCourtIds(ids);
+        const current = selectedCourtRef.current;
+        if (current && ids.includes(current.id)) {
+          clearCourt();
+          setCourtNotice(COURT_FULL_MESSAGE);
+        }
+      })
+      .catch(() => {});
+  }
+
+  function selectSport(next: SportWithPlayers) {
+    if (next.id === sportId) return;
+    setSportId(next.id);
+    setMaxPlayers(next.defaultPlayers);
+    setCourtNotice(null);
+    setBusyCourtIds([]);
+    loadCourts(next.id, reference);
+    checkBusyCourts(next.id, date, time);
+  }
+
+  // Mở trang là thử định vị luôn để xếp sân gần nhất theo vị trí thật; bị từ
+  // chối thì im lặng dùng toạ độ trong hồ sơ.
+  const onLocated = useEffectEvent((position: LatLng) => {
+    setMe(position);
+    if (sportId) loadCourts(sportId, position);
+  });
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    let active = true;
+    navigator.geolocation.getCurrentPosition(
+      (result) => {
+        if (active) {
+          onLocated({
+            lat: result.coords.latitude,
+            lng: result.coords.longitude,
+          });
+        }
+      },
+      () => {},
+      GEO_OPTIONS,
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const suggestions = useMemo(() => {
     if (!sportId) return [];
@@ -91,7 +272,11 @@ export function CreateMatchForm({
   }, [users, sportId, inviteQuery]);
 
   const canSubmit =
-    Boolean(sportId) && courtName.trim() !== "" && date !== "" && time !== "";
+    Boolean(sportId) &&
+    (manualCourt || selectedCourt !== null) &&
+    courtName.trim() !== "" &&
+    date !== "" &&
+    time !== "";
 
   function toggleInvite(userId: string) {
     setInvited((current) =>
@@ -103,9 +288,11 @@ export function CreateMatchForm({
 
   function submit() {
     if (!canSubmit || pending) return;
-    startTransition(() => {
-      void createMatchAction({
+    setSubmitError(null);
+    startTransition(async () => {
+      const result = await createMatchAction({
         sportId,
+        courtId: manualCourt ? null : (selectedCourt?.id ?? null),
         title: `${sport?.name ?? "Trận đấu"} - ${courtName.trim()}`,
         courtName: courtName.trim(),
         address: address.trim() || courtName.trim(),
@@ -116,6 +303,11 @@ export function CreateMatchForm({
         description: description.trim(),
         invitedUserIds: invited,
       });
+      // Thành công thì action đã chuyển trang; chỉ còn trường hợp lỗi nghiệp vụ.
+      if (result?.error) {
+        setSubmitError(result.error);
+        checkBusyCourts(sportId, date, time);
+      }
     });
   }
 
@@ -149,24 +341,51 @@ export function CreateMatchForm({
         <div className="space-y-6">
           <section className="rounded-2xl border border-border bg-card p-6">
             <h2 className="font-heading text-lg font-bold">1. Chọn môn</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              {sports.map((item) => (
+            <div className="mt-5 grid grid-cols-3 gap-3 sm:gap-4">
+              {visibleSports.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setSportId(item.id)}
+                  onClick={() => selectSport(item)}
                   className={cn(
-                    "flex flex-col items-center gap-3 rounded-2xl border p-6 transition-colors",
+                    "flex flex-col items-center gap-3 rounded-2xl border px-2 py-5 text-center transition-colors sm:p-6",
                     sportId === item.id
                       ? "border-brand bg-brand/5"
                       : "border-border hover:border-brand/50",
                   )}
                 >
                   <span className="text-3xl">{item.icon}</span>
-                  <span className="font-semibold">{item.name}</span>
+                  <span className="text-sm font-semibold sm:text-base">
+                    {item.name}
+                  </span>
                 </button>
               ))}
             </div>
+            {hiddenSports.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAllSports((current) => !current)}
+                aria-expanded={showAllSports}
+                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {showAllSports ? (
+                  <>
+                    Thu gọn
+                    <ChevronUp className="size-4" />
+                  </>
+                ) : (
+                  <>
+                    Xem thêm ({hiddenSports.length} môn)
+                    {selectedHiddenSport && (
+                      <span className="text-brand">
+                        · đang chọn: {selectedHiddenSport.name}
+                      </span>
+                    )}
+                    <ChevronDown className="size-4" />
+                  </>
+                )}
+              </button>
+            )}
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-6">
@@ -182,16 +401,33 @@ export function CreateMatchForm({
                 >
                   Tên sân
                 </label>
-                <div className="relative mt-2">
-                  <MapPin className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+                <CourtPicker
+                  disabled={!sportId}
+                  courts={courts}
+                  loading={courtsLoading}
+                  error={courtsError}
+                  reference={reference}
+                  isFull={isCourtFull}
+                  selectedCourt={selectedCourt}
+                  manual={manualCourt}
+                  onSelectCourt={selectCourt}
+                  onSelectManual={selectManualCourt}
+                />
+                {courtNotice && (
+                  <p className="mt-2 text-xs font-medium text-destructive">
+                    {courtNotice}
+                  </p>
+                )}
+                {manualCourt && (
                   <input
-                    id="courtName"
+                    id="manualCourtName"
+                    aria-label="Tự nhập tên sân"
                     value={courtName}
                     onChange={(event) => setCourtName(event.target.value)}
                     placeholder="VD: Cầu Giấy Sports Center"
-                    className="h-12 w-full rounded-xl border border-input bg-secondary/40 pr-4 pl-11 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand"
+                    className="mt-3 h-12 w-full rounded-xl border border-input bg-secondary/40 px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand"
                   />
-                </div>
+                )}
               </div>
 
               <div>
@@ -222,7 +458,10 @@ export function CreateMatchForm({
                     id="date"
                     type="date"
                     value={date}
-                    onChange={(event) => setDate(event.target.value)}
+                    onChange={(event) => {
+                      setDate(event.target.value);
+                      checkBusyCourts(sportId, event.target.value, time);
+                    }}
                     className="mt-2 h-12 w-full rounded-xl border border-input bg-secondary/40 px-4 text-sm outline-none transition-colors focus:border-brand"
                   />
                 </div>
@@ -237,7 +476,10 @@ export function CreateMatchForm({
                     id="time"
                     type="time"
                     value={time}
-                    onChange={(event) => setTime(event.target.value)}
+                    onChange={(event) => {
+                      setTime(event.target.value);
+                      checkBusyCourts(sportId, date, event.target.value);
+                    }}
                     className="mt-2 h-12 w-full rounded-xl border border-input bg-secondary/40 px-4 text-sm outline-none transition-colors focus:border-brand"
                   />
                 </div>
@@ -258,16 +500,14 @@ export function CreateMatchForm({
               </p>
               <input
                 type="range"
-                min={2}
-                max={20}
+                min={minPlayers}
+                max={playerLimit}
                 value={maxPlayers}
                 onChange={(event) => setMaxPlayers(Number(event.target.value))}
                 aria-label="Số người cần"
                 className="accent-brand mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-secondary"
                 style={{
-                  background: `linear-gradient(to right, var(--brand) ${
-                    ((maxPlayers - 2) / 18) * 100
-                  }%, var(--secondary) ${((maxPlayers - 2) / 18) * 100}%)`,
+                  background: `linear-gradient(to right, var(--brand) ${sliderPercent}%, var(--secondary) ${sliderPercent}%)`,
                 }}
               />
             </div>
@@ -409,6 +649,15 @@ export function CreateMatchForm({
               className="mt-4 w-full resize-y rounded-xl border border-input bg-secondary/40 px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand"
             />
           </section>
+
+          {submitError && (
+            <p
+              role="alert"
+              className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            >
+              {submitError}
+            </p>
+          )}
 
           <button
             type="button"
