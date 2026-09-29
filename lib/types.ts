@@ -19,18 +19,44 @@ export const WEEKDAYS = [
 ] as const;
 export type Weekday = (typeof WEEKDAYS)[number];
 
+export const PLAY_PURPOSES = ["Giao lưu", "Luyện tập", "Thi đấu"] as const;
+export type PlayPurpose = (typeof PLAY_PURPOSES)[number];
+
 export type Gender = "Nam" | "Nữ" | "Khác";
 
+export type FavoriteCourt = {
+  id: string;
+  name: string;
+  area: string;
+};
+
+/** Hồ sơ thể thao theo từng môn — dữ liệu đầu vào cho matchmaking. */
 export type UserSport = {
   sportId: string;
   skillLevel: SkillLevel;
+  purposes: PlayPurpose[];
+  /** Khu vực thường chơi, tên chuẩn trong `lib/areas.ts`. */
+  preferredAreas: string[];
+  favoriteCourts: FavoriteCourt[];
+};
+
+/** Một khung giờ rảnh hằng tuần; giờ tính bằng phút từ 00:00 (0–1439). */
+export type AvailabilitySlot = {
+  day: Weekday;
+  startMinute: number;
+  endMinute: number;
 };
 
 export type User = {
   id: string;
   name: string;
   email: string;
+  /** Avatar emoji — fallback khi chưa upload ảnh đại diện. */
   avatar: string;
+  /** URL ảnh đại diện đã upload (cột `User.image`). */
+  avatarUrl: string | null;
+  /** URL ảnh bìa hồ sơ (cột `User.coverImage`). */
+  coverImageUrl: string | null;
   bio: string;
   area: string;
   lat: number;
@@ -42,7 +68,9 @@ export type User = {
   isPro: boolean;
   distanceKm: number;
   sports: UserSport[];
+  /** Các ngày có ít nhất một khung giờ rảnh (dẫn xuất từ `availabilitySlots`). */
   availability: Weekday[];
+  availabilitySlots: AvailabilitySlot[];
   matchCount: number;
   averageStars: number;
   ratingCount: number;

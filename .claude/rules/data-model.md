@@ -11,10 +11,11 @@ paths:
 
 Thiết kế sao cho **Sport** là bảng mở rộng được (không hardcode "Cầu lông"/"Pickleball" rải rác trong code) để giai đoạn 2 thêm môn mới không cần sửa core.
 
-- `User`: id, name, email, passwordHash, avatarUrl, bio, location (địa danh + lat/lng), gender, birthday, trustScore, createdAt
-- `UserSport`: userId, sportId, skillLevel (Mới chơi / Trung cấp / Chuyên nghiệp)
+- `User`: id, name, email, passwordHash, avatarUrl (cột `image`), coverImageUrl (cột `coverImage`), bio, location (địa danh + lat/lng), gender, birthday, trustScore, createdAt
+- `UserSport`: userId, sportId, skillLevel (Mới chơi / Trung cấp / Chuyên nghiệp), purposes[] (`PlayPurpose`: Giao lưu / Luyện tập / Thi đấu), preferredAreas[] (tên khu vực chuẩn trong `lib/areas.ts`) — nguồn dữ liệu matchmaking, có index GIN cho 2 mảng
+- `UserSportCourt`: userId, sportId, courtId — sân yêu thích theo từng môn, chỉ trỏ tới `Court` có sẵn
 - `Sport`: id, name, icon, slug — mở rộng được, không giới hạn 2 môn
-- `Availability`: userId, dayOfWeek
+- `Availability`: id, userId, day, startMinute, endMinute — khung giờ rảnh hằng tuần, phút tính từ 00:00 (0–1439, CHECK end > start); một ngày nhiều khung. Giao nhau: `a.start < b.end && b.start < a.end`
 - `Match`: id, sportId, hostId, courtName, address, dateTime, maxPlayers, skillRequirement, visibility (public / invite / private), description, status
 - `MatchParticipant`: matchId, userId, status (invited / joined / left)
 - `Court`: id, name, area, sportIds[], pricePerHour, phone, status, lat/lng

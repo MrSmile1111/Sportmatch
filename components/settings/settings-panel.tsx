@@ -5,21 +5,24 @@ import {
   Bell,
   CalendarDays,
   Camera,
-  Check,
   Crosshair,
   Save,
   Shield,
+  Trophy,
   User as UserIcon,
 } from "lucide-react";
 import { saveProfileAction } from "@/app/(app)/settings/actions";
 import {
-  SKILL_LEVELS,
-  WEEKDAYS,
-  type Gender,
-  type SkillLevel,
-  type UserSport,
-  type Weekday,
-} from "@/lib/types";
+  AvailabilityEditor,
+  type SlotRow,
+} from "@/components/settings/availability-editor";
+import { SportProfileEditor } from "@/components/settings/sport-profile-editor";
+import {
+  minutesToTime,
+  timeToMinutes,
+  validateSlotDrafts,
+} from "@/lib/availability";
+import type { AvailabilitySlot, Gender, UserSport } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export type SettingsUser = {
@@ -30,7 +33,7 @@ export type SettingsUser = {
   birthday: string;
   bio: string;
   sports: UserSport[];
-  availability: Weekday[];
+  availabilitySlots: AvailabilitySlot[];
 };
 
 const TABS = [
@@ -83,36 +86,21 @@ export function SettingsPanel({
   const [birthday, setBirthday] = useState(user.birthday);
   const [bio, setBio] = useState(user.bio);
   const [userSports, setUserSports] = useState<UserSport[]>(user.sports);
-  const [days, setDays] = useState<Weekday[]>(user.availability);
+  const [slots, setSlots] = useState<SlotRow[]>(() =>
+    user.availabilitySlots.map((slot, index) => ({
+      key: `saved-${index}`,
+      day: slot.day,
+      start: minutesToTime(slot.startMinute),
+      end: minutesToTime(slot.endMinute),
+    })),
+  );
+  const slotErrors = validateSlotDrafts(slots);
+  const [error, setError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<string[]>(
     NOTIFICATION_SETTINGS.map((item) => item.id),
   );
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
-
-  function toggleSport(sportId: string) {
-    setUserSports((current) =>
-      current.some((entry) => entry.sportId === sportId)
-        ? current.filter((entry) => entry.sportId !== sportId)
-        : [...current, { sportId, skillLevel: "Mới chơi" }],
-    );
-  }
-
-  function setSkill(sportId: string, skillLevel: SkillLevel) {
-    setUserSports((current) =>
-      current.map((entry) =>
-        entry.sportId === sportId ? { ...entry, skillLevel } : entry,
-      ),
-    );
-  }
-
-  function toggleDay(day: Weekday) {
-    setDays((current) =>
-      current.includes(day)
-        ? current.filter((value) => value !== day)
-        : [...current, day],
-    );
-  }
 
   function detectArea() {
     if (!navigator.geolocation) return;
@@ -125,17 +113,37 @@ export function SettingsPanel({
 
   function save() {
     setSaved(false);
-    startTransition(() => {
-      void saveProfileAction({
+    if (slotErrors.some(Boolean)) {
+      setError("Lịch rảnh chưa hợp lệ — xem lỗi bên dưới từng khung giờ.");
+      document
+        .querySelector("[data-slot-error]")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const result = await saveProfileAction({
         name: name.trim(),
         avatar,
         area: area.trim(),
         gender: gender === "" ? "Khác" : gender,
         birthday,
         bio: bio.trim(),
-        sports: userSports,
-        availability: days,
-      }).then(() => setSaved(true));
+        sports: userSports.map((entry) => ({
+          sportId: entry.sportId,
+          skillLevel: entry.skillLevel,
+          purposes: entry.purposes,
+          preferredAreas: entry.preferredAreas,
+          favoriteCourtIds: entry.favoriteCourts.map((court) => court.id),
+        })),
+        availability: slots.map((slot) => ({
+          day: slot.day,
+          startMinute: timeToMinutes(slot.start) ?? -1,
+          endMinute: timeToMinutes(slot.end) ?? -1,
+        })),
+      });
+      if (result.error) setError(result.error);
+      else setSaved(true);
     });
   }
 
@@ -169,7 +177,9 @@ export function SettingsPanel({
         </nav>
 
         {tab === "profile" ? (
-          <div className="space-y-6">
+          // min-w-0: ô giờ/ô nhập có bề rộng tối thiểu riêng, không để chúng
+          // kéo giãn cột grid trên màn hình hẹp.
+          <div className="min-w-0 space-y-6">
             <section className="rounded-2xl border border-border bg-card p-6">
               <h2 className="font-heading text-lg font-bold">Ảnh đại diện</h2>
               <div className="mt-5 flex flex-wrap items-center gap-5">
@@ -318,98 +328,46 @@ export function SettingsPanel({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-border bg-card p-6">
-              <h2 className="font-heading text-lg font-bold">
+            <section
+              id="sports"
+              className="scroll-mt-24 rounded-2xl border border-border bg-card p-6"
+            >
+              <h2 className="font-heading flex items-center gap-2 text-lg font-bold">
+                <Trophy className="text-brand size-5" />
                 Môn thể thao và trình độ
               </h2>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                {sports.map((sport) => {
-                  const selected = userSports.some(
-                    (entry) => entry.sportId === sport.id,
-                  );
-                  return (
-                    <button
-                      key={sport.id}
-                      type="button"
-                      onClick={() => toggleSport(sport.id)}
-                      className={cn(
-                        "inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition-colors",
-                        selected
-                          ? "border-brand bg-brand/10 text-brand"
-                          : "border-border hover:border-brand/50",
-                      )}
-                    >
-                      <span>{sport.icon}</span>
-                      {sport.name}
-                      {selected ? <Check className="size-4" /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {userSports.length === 0 ? (
-                <p className="mt-5 text-sm text-muted-foreground">
-                  Chọn ít nhất một môn thể thao để đặt trình độ.
-                </p>
-              ) : (
-                <div className="mt-5 space-y-4">
-                  {userSports.map((entry) => (
-                    <div key={entry.sportId}>
-                      {userSports.length > 1 ? (
-                        <p className="mb-2 text-sm text-muted-foreground">
-                          {sports.find((sport) => sport.id === entry.sportId)
-                            ?.name ?? entry.sportId}
-                        </p>
-                      ) : null}
-                      <div className="flex flex-wrap gap-3">
-                        {SKILL_LEVELS.map((level) => (
-                          <button
-                            key={level}
-                            type="button"
-                            onClick={() => setSkill(entry.sportId, level)}
-                            className={cn(
-                              "rounded-xl border px-5 py-2.5 text-sm font-semibold transition-colors",
-                              entry.skillLevel === level
-                                ? "border-success/50 bg-success-muted text-success"
-                                : "border-border hover:border-brand/50",
-                            )}
-                          >
-                            {level}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Trình độ, mục đích chơi và khu vực giúp ghép bạn với người chơi
+                phù hợp.
+              </p>
+              <SportProfileEditor
+                sports={sports}
+                value={userSports}
+                onChange={setUserSports}
+              />
             </section>
 
-            <section className="rounded-2xl border border-border bg-card p-6">
+            <section
+              id="availability"
+              className="scroll-mt-24 rounded-2xl border border-border bg-card p-6"
+            >
               <h2 className="font-heading flex items-center gap-2 text-lg font-bold">
                 <CalendarDays className="text-brand size-5" />
                 Lịch rảnh
               </h2>
-              <div className="mt-5 flex flex-wrap gap-3">
-                {WEEKDAYS.map((day) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => toggleDay(day)}
-                    className={cn(
-                      "rounded-xl border px-5 py-2.5 text-sm font-semibold transition-colors",
-                      days.includes(day)
-                        ? "border-success/50 bg-success-muted text-success"
-                        : "border-border hover:border-brand/50",
-                    )}
-                  >
-                    {day}
-                  </button>
-                ))}
-              </div>
+              <AvailabilityEditor
+                value={slots}
+                errors={slotErrors}
+                onChange={setSlots}
+              />
             </section>
 
-            <div className="flex items-center justify-end gap-4">
+            <div className="flex flex-wrap items-center justify-end gap-4">
+              {error && !pending ? (
+                <span role="alert" className="text-destructive text-sm font-semibold">
+                  {error}
+                </span>
+              ) : null}
               {saved && !pending ? (
                 <span className="text-success text-sm font-semibold">
                   Đã lưu thay đổi

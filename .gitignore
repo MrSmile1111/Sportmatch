@@ -47,3 +47,6 @@ next-env.d.ts
 /*.png
 /*.pdf
 /*.mp3
+
+# ảnh người dùng upload khi chạy local (LocalDiskImageStorage)
+/storage
