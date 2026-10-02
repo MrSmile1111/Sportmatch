@@ -57,7 +57,7 @@ function matchesFee(fee: number, selected: FilterValue["fee"]) {
   return fee > 100000;
 }
 
-export function ExploreClubsPage({ preview = false }: { preview?: boolean }) {
+export function ExploreClubsPage({ preview = false, persistentClubs = [] }: { preview?: boolean; persistentClubs?: Club[] }) {
   const [filters, setFilters] = useState(defaultFilters);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("match");
@@ -66,7 +66,8 @@ export function ExploreClubsPage({ preview = false }: { preview?: boolean }) {
   const [joinMessage, setJoinMessage] = useState("");
   const createdClubs = useSyncExternalStore(subscribeCreatedClubs, getCreatedClubs, getServerCreatedClubs);
   const pendingClubIds = useSyncExternalStore(subscribeClubRequests, getPendingClubRequests, getServerPendingClubRequests);
-  const clubs = useMemo(() => [...createdClubs, ...mockClubs], [createdClubs]);
+  const clubs = useMemo(() => [...persistentClubs, ...createdClubs, ...mockClubs], [createdClubs, persistentClubs]);
+  const persistentClubIds = useMemo(() => new Set(persistentClubs.map((club) => club.id)), [persistentClubs]);
 
   const filteredClubs = useMemo(() => {
     const normalizedQuery = normalize(query.trim());
@@ -99,10 +100,27 @@ export function ExploreClubsPage({ preview = false }: { preview?: boolean }) {
     setSortBy("match");
   }
 
-  function submitJoinRequest() {
+  async function submitJoinRequest() {
     if (!joinTarget) return;
-    saveClubRequest(joinTarget.id);
-    setJoinMessage(`Đã gửi yêu cầu tham gia ${joinTarget.name}. CLB sẽ phản hồi trong thông báo của bạn.`);
+
+    if (preview) {
+      saveClubRequest(joinTarget.id);
+      setJoinMessage(`Đã gửi yêu cầu demo tham gia ${joinTarget.name}.`);
+      setJoinTarget(null);
+      return;
+    }
+
+    if (!persistentClubIds.has(joinTarget.id)) {
+      setJoinMessage("CLB dữ liệu mẫu chỉ để xem thử; yêu cầu tham gia chưa được gửi.");
+      setJoinTarget(null);
+      return;
+    }
+
+    const response = await fetch(`/api/clubs/${joinTarget.id}/membership`, { method: "POST" });
+    const result = await response.json();
+    setJoinMessage(response.ok
+      ? `Đã gửi yêu cầu tham gia ${joinTarget.name}. Chủ CLB sẽ xét duyệt trước khi bạn vào kênh nội bộ.`
+      : result.error ?? "Không thể gửi yêu cầu tham gia.");
     setJoinTarget(null);
   }
 

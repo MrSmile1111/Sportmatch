@@ -22,7 +22,7 @@ export function CreateClubPage({ preview = false }: { preview?: boolean }) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
-  function createClub(event: React.FormEvent<HTMLFormElement>) {
+  async function createClub(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
     setError("");
@@ -68,8 +68,25 @@ export function CreateClubPage({ preview = false }: { preview?: boolean }) {
     };
 
     try {
-      saveCreatedClub(club);
-      router.push(preview ? "/preview/explore-clubs" : "/clubs");
+      if (preview) {
+        saveCreatedClub(club);
+        router.push("/preview/explore-clubs");
+        return;
+      }
+
+      const response = await fetch("/api/clubs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, sportType, area, description, capacity, fee, schedule }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error ?? "Không thể tạo câu lạc bộ.");
+        setIsSaving(false);
+        return;
+      }
+
+      router.push(`/clubs/${result.id}`);
       router.refresh();
     } catch {
       setError("Không thể lưu CLB trên trình duyệt này. Hãy thử lại.");
