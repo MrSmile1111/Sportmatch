@@ -10,7 +10,6 @@ import {
   History,
   LogOut,
   MapPin,
-  Map as MapIcon,
   MessageCircle,
   Plus,
   Search,
@@ -18,6 +17,7 @@ import {
   Star,
   Trophy,
   User as UserIcon,
+  Users,
 } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
 import { SiteLogo } from "@/components/layout/site-logo";
@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/discover", label: "Khám phá", icon: Search },
-  { href: "/map", label: "Bản đồ", icon: MapIcon },
+  { href: "/clubs", label: "Câu lạc bộ", icon: Users },
   { href: "/matches", label: "Trận đấu", icon: CalendarDays },
   { href: "/courts", label: "Sân bãi", icon: MapPin },
   { href: "/ranking", label: "Xếp hạng", icon: Trophy },

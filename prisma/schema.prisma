@@ -72,6 +72,12 @@ enum CourtSource {
   OSM // sân đồng bộ từ OpenStreetMap, id dạng "osm-node-123"
 }
 
+enum ClubMembershipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ---------------------------------------------------------------- auth + user
 
 model User {
@@ -112,8 +118,51 @@ model User {
   notifications Notification[]
   messages      ChatMessage[]
   conversations ConversationMember[]
+  ownedClubs    Club[]                @relation("ClubOwner")
+  clubMemberships ClubMembership[]
 
   @@index([area])
+}
+
+model Club {
+  id          String   @id @default(cuid())
+  ownerId     String?
+  name        String
+  area        String
+  sportType   String
+  logo        String   @default("🏸")
+  rating      Float    @default(4.8)
+  description String   @default("")
+  memberCount Int      @default(1)
+  capacity    Int      @default(20)
+  fee         Int      @default(0)
+  schedule    String[] @default([])
+  time        String   @default("19:00–21:00")
+  level       String   @default("Người mới")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner       User?            @relation("ClubOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  memberships ClubMembership[]
+
+  @@index([ownerId])
+  @@index([sportType])
+  @@index([area])
+}
+
+model ClubMembership {
+  clubId     String
+  userId     String
+  status     ClubMembershipStatus @default(PENDING)
+  requestedAt DateTime            @default(now())
+  reviewedAt DateTime?
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([clubId, userId])
+  @@index([userId, status])
+  @@index([clubId, status])
 }
 
 model Account {

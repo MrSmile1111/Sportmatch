@@ -14,7 +14,7 @@ paths:
 - **Ngôn ngữ giao diện**: Tiếng Việt 100%, giữ đúng từ ngữ như trong ảnh gốc (không tự dịch lại hoặc đổi wording).
 - **Header chính** (sau khi đăng nhập), luôn hiện trên mọi trang trong `(app)`:
   - Logo SportMatch (trái)
-  - Menu ngang: Khám phá · Bản đồ · Trận đấu · Sân bãi · Xếp hạng
+  - Menu ngang: Khám phá · Câu lạc bộ · Trận đấu · Sân bãi · Xếp hạng (ảnh gốc là "Bản đồ" — đã thay bằng "Câu lạc bộ" theo yêu cầu user 2026-10-05; trang `/map` vẫn còn, chỉ bỏ khỏi menu)
   - Toggle theme (sáng/tối)
   - Nút "+ Tạo trận" nổi bật màu cam
   - Icon Thông báo, icon Chat (có badge số lượng chưa đọc khi có)
