@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 import { AppHeader } from "@/components/layout/app-header";
+import { RealtimeListener } from "@/components/chat/realtime-listener";
 import { DiscoverIntroProvider } from "@/components/discover/discover-intro-provider";
 import { Toaster } from "@/components/ui/toast";
 import { countUnreadMessages } from "@/lib/data/chat";
 import { countUnreadNotifications } from "@/lib/data/notifications";
 import { getCurrentUser } from "@/lib/data/users";
+import { userRealtimeTopic } from "@/lib/realtime/broadcast";
 
 // Mọi trang trong nhóm này đều phụ thuộc phiên đăng nhập và dữ liệu người dùng,
 // nên không prerender — tránh cả việc build phải kết nối database.
@@ -28,6 +30,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         unreadNotifications={unreadNotifications}
         unreadMessages={unreadMessages}
       />
+      <RealtimeListener topic={userRealtimeTopic(user.id)} />
       <DiscoverIntroProvider>
         <Toaster>
           <div className="flex-1">{children}</div>

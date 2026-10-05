@@ -10,7 +10,7 @@ Dự án dùng stack sau. Không cần hỏi lại user trước khi cài các p
 - **Bản đồ**: Leaflet + react-leaflet, tile layer OpenStreetMap (đúng như ảnh gốc, giữ watermark "Leaflet | © OpenStreetMap contributors"). **Không dùng Google Maps API** (user không tạo được key — chốt 2026-09-27).
   - Dữ liệu sân thật: **Overpass API** (OpenStreetMap, miễn phí, không key) — `lib/osm/overpass.ts`, lưu vào bảng `Court` theo ô lưới (`lib/data/court-sync.ts`) để lần sau chỉ đọc DB. Overpass công cộng hay quá tải → có server dự phòng.
   - Chỉ đường: link công khai `google.com/maps/dir/?api=1&destination=lat,lng` (không cần key).
-- **Realtime** (chat, thông báo): Pusher hoặc Supabase Realtime (ưu tiên Supabase nếu cũng dùng Supabase cho Postgres, để giảm số dịch vụ ngoài phải quản lý) — cần chốt cụ thể khi bắt đầu implement chat, nhưng không chặn việc dựng các trang khác trước.
+- **Realtime** (chat): **Supabase Realtime Broadcast** (chốt 2026-10-05). Server phát tín hiệu "có thay đổi" (không kèm nội dung) qua REST bằng `SUPABASE_SECRET_KEY` tới kênh riêng của từng user (tên kênh băm HMAC từ userId) — `lib/realtime/broadcast.ts`; trình duyệt nghe bằng publishable key rồi `router.refresh()` — `components/chat/realtime-listener.tsx`. Không dùng Postgres Changes/RLS/JWT secret. Cần bật "Allow public access" trong Realtime Settings.
 - **Package manager**: pnpm
 - **Deploy**: chưa chốt (đề xuất Vercel do là Next.js) — hỏi user khi tới lúc deploy.
 

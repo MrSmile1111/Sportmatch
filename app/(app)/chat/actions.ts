@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { requireUserId } from "@/lib/auth/session";
 import {
   ChatActionError,
@@ -9,6 +10,7 @@ import {
   markConversationRead,
   sendMessage,
 } from "@/lib/data/chat";
+import { notifyConversationMembers } from "@/lib/realtime/broadcast";
 
 export type ChatActionState = { error: string | null };
 
@@ -23,6 +25,8 @@ export async function sendMessageAction(
     if (error instanceof ChatActionError) return { error: error.message };
     throw error;
   }
+  // Báo realtime cho các thành viên sau khi đã trả kết quả cho người gửi.
+  after(() => notifyConversationMembers(conversationId));
   refresh();
   return { error: null };
 }

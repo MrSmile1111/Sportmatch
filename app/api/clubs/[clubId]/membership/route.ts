@@ -1,6 +1,8 @@
+import { after } from "next/server";
 import { auth } from "@/auth";
 import { addClubConversationMember, removeClubConversationMember } from "@/lib/data/chat";
 import { prisma } from "@/lib/prisma";
+import { notifyUsers } from "@/lib/realtime/broadcast";
 
 type Context = { params: Promise<{ clubId: string }> };
 
@@ -131,5 +133,7 @@ export async function PATCH(request: Request, { params }: Context) {
   });
 
   if ("error" in result) return Response.json({ error: result.error }, { status: 409 });
+  // Người được duyệt thấy nhóm chat CLB xuất hiện ngay trong Tin nhắn.
+  after(() => notifyUsers([body.userId as string], "chat"));
   return Response.json(result);
 }
