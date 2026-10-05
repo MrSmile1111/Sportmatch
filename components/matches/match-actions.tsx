@@ -182,7 +182,7 @@ export function MatchDetailActions({
   isUpcoming: boolean;
 }) {
   const chat = (
-    <Link href="/chat" className={buttonClass("outline", "md")}>
+    <Link href={`/chat?match=${matchId}`} className={buttonClass("outline", "md")}>
       Chat nhóm trận
     </Link>
   );

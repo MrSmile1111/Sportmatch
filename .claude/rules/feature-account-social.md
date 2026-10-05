@@ -21,7 +21,12 @@ Sidebar trái 3 mục: Hồ sơ / Thông báo / Bảo mật.
 Đối chiếu `screencapture-...-main-settings-*.png`.
 
 ## Tin nhắn (Chat)
-Trang "Tin nhắn" — realtime, cập nhật tự động. Trạng thái rỗng: "Chưa có hội thoại. Vào trận đấu để chat với chủ trận hoặc team!" + CTA "Xem trận đấu". Khi có hội thoại: chưa có ảnh minh hoạ — dùng layout chuẩn (danh sách hội thoại trái + khung chat phải) nhưng xác nhận lại với user trước khi chốt chi tiết. Đối chiếu `screencapture-...-main-chat-*.png`.
+Trang "Tin nhắn" — realtime, cập nhật tự động. Trạng thái rỗng: "Chưa có hội thoại. Vào trận đấu để chat với chủ trận hoặc team!" + CTA "Xem trận đấu". Khi có hội thoại: bố cục **kiểu Zalo** (user chốt 2026-10-05), giữ màu design system — danh sách hội thoại trái (tìm kiếm, tab Tất cả/Chưa đọc, badge chưa đọc) + khung chat phải (gộp tin liên tiếp, mốc ngày/giờ, "Đã gửi/Đã xem" ở chat riêng) + panel thông tin bật/tắt; di động chỉ 1 cột. Không làm nút gọi điện/gửi file/emoji khi chưa có tính năng thật. Code: `components/chat/`, dữ liệu `lib/data/chat.ts`. Đối chiếu `screencapture-...-main-chat-*.png` cho trạng thái rỗng.
+
+Mọi chat dùng chung 1 hệ thống `ChatConversation` (type `DIRECT` | `MATCH` | `CLUB`):
+- **Chat riêng 1-1** giữa người chơi (nút nhắn tin ở Khám phá; "Hỏi đáp" với chủ CLB cũng là chat riêng).
+- **Nhóm trận**: chủ trận + người đã tham gia.
+- **Nhóm CLB**: tạo kèm khi tạo CLB; chủ CLB duyệt thành viên → tự động vào nhóm, từ chối → ra khỏi nhóm. Tab "Trò chuyện" trong trang CLB nhúng cùng hội thoại đó.
 
 ## Lịch sử trận đấu (History)
 4 ô thống kê đầu trang: Tổng trận, Đã hoàn tất, Đang diễn ra, Đánh giá TB. Bên dưới là danh sách lịch sử; trạng thái rỗng: "Chưa có lịch sử trận đấu. Tìm trận ngay". Đối chiếu `screencapture-...-main-history-*.png`.

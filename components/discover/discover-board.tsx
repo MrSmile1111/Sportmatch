@@ -35,6 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { openDirectChatAction } from "@/app/(app)/chat/actions";
 import { WEEKDAYS, WEEKDAY_SHORT, type Weekday } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -873,13 +874,15 @@ export function DiscoverBoard({
                         <Send className="size-4" />
                         Gửi lời mời
                       </button>
-                      <Link
-                        href="/chat"
-                        aria-label={`Nhắn tin với ${player.name}`}
-                        className="inline-flex items-center justify-center rounded-xl border border-border px-3 py-2.5 text-muted-foreground transition-colors hover:border-orange-500 hover:text-orange-600"
-                      >
-                        <MessageCircle className="size-4" />
-                      </Link>
+                      <form action={openDirectChatAction.bind(null, player.id)}>
+                        <button
+                          type="submit"
+                          aria-label={`Nhắn tin với ${player.name}`}
+                          className="inline-flex h-full items-center justify-center rounded-xl border border-border px-3 py-2.5 text-muted-foreground transition-colors hover:border-orange-500 hover:text-orange-600"
+                        >
+                          <MessageCircle className="size-4" />
+                        </button>
+                      </form>
                     </div>
                   </div>
                   </article>

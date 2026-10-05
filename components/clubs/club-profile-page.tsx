@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CalendarDays, Check, Clock3, MapPin, Share2, ShieldCheck, Star, Users } from "lucide-react";
-import { ClubChat } from "@/components/clubs/club-chat";
+import { ClubChat, type ClubChatData } from "@/components/clubs/club-chat";
 import type { Club } from "@/lib/clubs/mock-data";
 import type { ClubMembershipState, ClubViewerAccess } from "@/lib/clubs/viewer-access";
 import { getPendingClubRequests, getServerPendingClubRequests, saveClubRequest, subscribeClubRequests } from "@/lib/clubs/demo-storage";
@@ -13,7 +13,7 @@ const daysOfWeek = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const tabs = ["Tổng quan", "Thành viên", "Hoạt động", "Thành tích", "Trò chuyện"] as const;
 type ProfileTab = (typeof tabs)[number];
 
-export function ClubProfilePage({ club, preview = false, viewerAccess }: { club: Club; preview?: boolean; viewerAccess?: ClubViewerAccess }) {
+export function ClubProfilePage({ club, preview = false, viewerAccess, chat }: { club: Club; preview?: boolean; viewerAccess?: ClubViewerAccess; chat?: ClubChatData | null }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProfileTab>("Tổng quan");
   const [showRequestForm, setShowRequestForm] = useState(false);
@@ -162,7 +162,7 @@ export function ClubProfilePage({ club, preview = false, viewerAccess }: { club:
           {activeTab === "Thành viên" && <section className="rounded-xl border border-slate-200 bg-white p-5"><div className="flex items-center justify-between"><h2 className="font-bold">Thành viên</h2><span className="text-sm text-slate-500">{club.memberCount} thành viên</span></div><div className="mt-4 divide-y divide-slate-100">{club.members.map((member, index) => <div key={member} className="flex items-center gap-3 py-3"><div className="flex size-10 items-center justify-center rounded-full bg-orange-50 text-sm font-bold text-orange-700">{member.slice(0, 1)}</div><div><p className="text-sm font-semibold">{member}</p><p className="text-xs text-slate-500">{index === 0 ? "Quản trị viên" : "Thành viên"} · {club.level}</p></div></div>)}</div><button type="button" className="mt-2 text-sm font-semibold text-orange-600">Xem tất cả {club.memberCount} thành viên</button></section>}
           {activeTab === "Hoạt động" && <section className="rounded-xl border border-slate-200 bg-white p-5"><div className="flex items-center justify-between"><h2 className="font-bold">Hoạt động của CLB</h2><span className="text-sm text-slate-500">{club.activityCount} hoạt động</span></div><article className="mt-4 rounded-lg border border-slate-200 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">{club.nextActivity.kind}</span><h3 className="mt-2 font-bold">{club.nextActivity.title}</h3></div><span className="text-xs text-slate-500">Sắp diễn ra</span></div><div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-3"><span>{club.nextActivity.date}</span><span>{club.nextActivity.time}</span><span>{club.nextActivity.venue}</span></div><div className="mt-4 flex items-center justify-between"><span className="text-xs text-slate-500">{club.nextActivity.joined}/{club.nextActivity.capacity} người</span><button type="button" disabled={activityJoined} onClick={() => { setActivityJoined(true); setSuccess("Bạn đã đăng ký tham gia hoạt động."); }} className="min-h-9 rounded-lg bg-orange-500 px-3 text-xs font-bold text-white hover:bg-orange-600 disabled:bg-emerald-600">{activityJoined ? "Đã đăng ký" : "Tham gia"}</button></div></article><p className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">CLB đã tổ chức {club.activityCount} hoạt động, hoạt động gần nhất diễn ra trong tháng này.</p></section>}
           {activeTab === "Thành tích" && <section className="rounded-xl border border-slate-200 bg-white p-5"><h2 className="font-bold">Thành tích CLB</h2><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{[["Hoạt động", club.achievements.events], ["Thắng", club.achievements.wins], ["Hòa", club.achievements.draws], ["Thua", club.achievements.losses]].map(([label, value]) => <div key={label} className="rounded-lg bg-slate-50 p-4"><p className="text-xs text-slate-500">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></div>)}</div><div className="mt-4 flex items-center gap-2 text-sm text-slate-600"><Star className="size-4 fill-amber-400 text-amber-400" />Đánh giá trung bình {club.rating.toFixed(1)} / 5 · Hoạt động {club.foundedMonths} tháng</div></section>}
-          {activeTab === "Trò chuyện" && <ClubChat clubId={club.id} viewerAccess={viewerAccess} />}
+          {activeTab === "Trò chuyện" && <ClubChat clubId={club.id} viewerAccess={viewerAccess} chat={chat} />}
         </div>
       </div>
 

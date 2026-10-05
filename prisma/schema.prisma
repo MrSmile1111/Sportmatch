@@ -107,18 +107,18 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  sports        UserSport[]
-  availability  Availability[]
-  hostedMatches Match[]              @relation("MatchHost")
-  participation MatchParticipant[]
-  ratingsGiven  Rating[]             @relation("RatingFrom")
-  ratingsGot    Rating[]             @relation("RatingTo")
-  notifications Notification[]
-  messages      ChatMessage[]
-  conversations ConversationMember[]
-  ownedClubs    Club[]                @relation("ClubOwner")
+  accounts        Account[]
+  sessions        Session[]
+  sports          UserSport[]
+  availability    Availability[]
+  hostedMatches   Match[]              @relation("MatchHost")
+  participation   MatchParticipant[]
+  ratingsGiven    Rating[]             @relation("RatingFrom")
+  ratingsGot      Rating[]             @relation("RatingTo")
+  notifications   Notification[]
+  messages        ChatMessage[]
+  conversations   ConversationMember[]
+  ownedClubs      Club[]               @relation("ClubOwner")
   clubMemberships ClubMembership[]
 
   @@index([area])
@@ -142,8 +142,9 @@ model Club {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  owner       User?            @relation("ClubOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  memberships ClubMembership[]
+  owner        User?             @relation("ClubOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  memberships  ClubMembership[]
+  conversation ChatConversation?
 
   @@index([ownerId])
   @@index([sportType])
@@ -151,11 +152,11 @@ model Club {
 }
 
 model ClubMembership {
-  clubId     String
-  userId     String
-  status     ClubMembershipStatus @default(PENDING)
-  requestedAt DateTime            @default(now())
-  reviewedAt DateTime?
+  clubId      String
+  userId      String
+  status      ClubMembershipStatus @default(PENDING)
+  requestedAt DateTime             @default(now())
+  reviewedAt  DateTime?
 
   club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -411,13 +412,25 @@ model Notification {
 
 // ---------------------------------------------------------------- chat
 
-model ChatConversation {
-  id            String   @id @default(cuid())
-  matchId       String   @unique
-  lastMessageAt DateTime @default(now())
-  createdAt     DateTime @default(now())
+enum ConversationType {
+  DIRECT // chat riêng giữa 2 người chơi
+  MATCH // nhóm chat của 1 trận đấu
+  CLUB // nhóm chat nội bộ của 1 CLB (chủ CLB + thành viên đã duyệt)
+}
 
-  match    Match                @relation(fields: [matchId], references: [id], onDelete: Cascade)
+model ChatConversation {
+  id            String           @id @default(cuid())
+  type          ConversationType @default(MATCH)
+  // Đúng 1 trong 3 khoá dưới đây có giá trị, tuỳ theo `type`.
+  matchId       String?          @unique
+  clubId        String?          @unique
+  // Chat riêng: "<userId nhỏ hơn>:<userId lớn hơn>" để mỗi cặp chỉ có 1 hội thoại.
+  directKey     String?          @unique
+  lastMessageAt DateTime         @default(now())
+  createdAt     DateTime         @default(now())
+
+  match    Match?               @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  club     Club?                @relation(fields: [clubId], references: [id], onDelete: Cascade)
   members  ConversationMember[]
   messages ChatMessage[]
 

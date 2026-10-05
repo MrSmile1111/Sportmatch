@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { CLUB_SPORTS } from "@/lib/clubs/mock-data";
+import { createClubConversation } from "@/lib/data/chat";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
@@ -35,21 +36,26 @@ export async function POST(request: Request) {
     "Bóng đá": "⚽", "Bóng rổ": "🏀", "Cầu lông": "🏸", "Bóng bàn": "🏓",
     Tennis: "🎾", Pickleball: "🏓", "Võ thuật": "🥋",
   };
-  const club = await prisma.club.create({
-    data: {
-      ownerId,
-      name,
-      area,
-      description,
-      sportType,
-      logo: icons[sportType],
-      capacity,
-      fee,
-      schedule: schedule.length ? schedule : ["T7"],
-      level: "Người mới",
-      memberCount: 1,
-    },
-    select: { id: true },
+  const club = await prisma.$transaction(async (tx) => {
+    const created = await tx.club.create({
+      data: {
+        ownerId,
+        name,
+        area,
+        description,
+        sportType,
+        logo: icons[sportType],
+        capacity,
+        fee,
+        schedule: schedule.length ? schedule : ["T7"],
+        level: "Người mới",
+        memberCount: 1,
+      },
+      select: { id: true },
+    });
+    // Mỗi CLB có 1 nhóm chat nội bộ; thành viên được thêm khi chủ CLB duyệt.
+    await createClubConversation(tx, created.id, ownerId);
+    return created;
   });
 
   return Response.json({ id: club.id }, { status: 201 });

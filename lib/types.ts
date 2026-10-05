@@ -156,15 +156,50 @@ export type ChatMessage = {
   id: string;
   conversationId: string;
   senderId: string;
+  senderName: string;
+  senderAvatar: string;
+  senderImage: string | null;
   body: string;
   createdAt: string;
 };
 
+/** direct = chat riêng 2 người; match = nhóm trận; club = nhóm nội bộ CLB. */
+export type ConversationKind = "direct" | "match" | "club";
+
+export type ChatMember = {
+  id: string;
+  name: string;
+  avatar: string;
+  image: string | null;
+  isOnline: boolean;
+};
+
 export type ChatConversation = {
   id: string;
-  matchId: string;
-  participantIds: string[];
+  kind: ConversationKind;
+  title: string;
+  /** Emoji fallback (avatar người chơi, icon môn của trận, logo CLB). */
+  avatar: string;
+  image: string | null;
+  /** Trang liên quan: hồ sơ người kia / chi tiết trận / trang CLB. */
+  href: string;
+  memberCount: number;
+  /** Chat riêng: người còn lại trong hội thoại. */
+  peer: ChatMember | null;
+  lastMessage: {
+    body: string;
+    senderId: string;
+    senderName: string;
+    createdAt: string;
+  } | null;
   lastMessageAt: string;
+  unreadCount: number;
+};
+
+export type ChatConversationDetail = ChatConversation & {
+  members: ChatMember[];
+  /** Chat riêng: mốc đã đọc của người kia — để hiện "Đã xem". */
+  peerLastReadAt: string | null;
 };
 
 export const WEEKDAY_SHORT: Record<Weekday, string> = {

@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { ClubProfilePage } from "@/components/clubs/club-profile-page";
 import { ClubDetailRoute } from "@/components/clubs/club-detail-route";
 import type { Club } from "@/lib/clubs/mock-data";
+import { findGroupConversationId, getConversation, getMessages } from "@/lib/data/chat";
 import { prisma } from "@/lib/prisma";
 import type { ClubViewerAccess } from "@/lib/clubs/viewer-access";
 
@@ -27,6 +28,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ clu
       isAuthenticated: Boolean(userId),
       userId,
       displayName: session?.user?.name ?? "Khách chơi",
+      ownerId: null,
       isOwner: false,
       membershipStatus: null,
       pendingRequests: [],
@@ -80,6 +82,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ clu
     isAuthenticated: Boolean(userId),
     userId,
     displayName: session?.user?.name ?? "Khách chơi",
+    ownerId: club.ownerId,
     isOwner,
     membershipStatus: isOwner ? "APPROVED" : membership?.status ?? null,
     pendingRequests: pendingRequests.map((request) => ({
@@ -90,5 +93,15 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ clu
     })),
   };
 
-  return <ClubProfilePage club={mappedClub} viewerAccess={viewerAccess} />;
+  // Chủ CLB + thành viên đã duyệt: nạp sẵn nhóm chat nội bộ cho tab "Trò chuyện".
+  const conversationId =
+    userId && viewerAccess.membershipStatus === "APPROVED"
+      ? await findGroupConversationId({ clubId }, userId)
+      : null;
+  const [conversation, messages] = conversationId && userId
+    ? await Promise.all([getConversation(conversationId, userId), getMessages(conversationId, userId)])
+    : [null, []];
+  const chat = conversation ? { conversation, messages } : null;
+
+  return <ClubProfilePage club={mappedClub} viewerAccess={viewerAccess} chat={chat} />;
 }

@@ -12,6 +12,8 @@ export type ClubViewerAccess = {
   isAuthenticated: boolean;
   userId: string | null;
   displayName: string;
+  /** Chủ CLB — để người chưa vào CLB nhắn riêng hỏi đáp. */
+  ownerId: string | null;
   isOwner: boolean;
   membershipStatus: ClubMembershipState | null;
   pendingRequests: PendingClubRequest[];

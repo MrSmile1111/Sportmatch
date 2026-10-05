@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { addClubConversationMember, removeClubConversationMember } from "@/lib/data/chat";
 import { prisma } from "@/lib/prisma";
 
 type Context = { params: Promise<{ clubId: string }> };
@@ -118,6 +119,12 @@ export async function PATCH(request: Request, { params }: Context) {
         reviewedAt: new Date(),
       },
     });
+    // Được duyệt → vào nhóm chat CLB; bị từ chối → không ở trong nhóm.
+    if (body.decision === "approve") {
+      await addClubConversationMember(tx, clubId, body.userId as string);
+    } else {
+      await removeClubConversationMember(tx, clubId, body.userId as string);
+    }
     const approvedCount = await tx.clubMembership.count({ where: { clubId, status: "APPROVED" } });
     await tx.club.update({ where: { id: clubId }, data: { memberCount: approvedCount + 1 } });
     return { membershipStatus: body.decision === "approve" ? "APPROVED" : "REJECTED" };
