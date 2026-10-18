@@ -50,3 +50,6 @@ next-env.d.ts
 
 # ảnh người dùng upload khi chạy local (LocalDiskImageStorage)
 /storage
+
+# knowledge graph của Graphify (tự sinh lại bằng `graphify update .`)
+/graphify-out
