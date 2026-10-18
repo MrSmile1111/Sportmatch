@@ -4,6 +4,7 @@ export type PendingClubRequest = {
   userId: string;
   name: string;
   avatar: string;
+  avatarUrl: string | null;
   area: string;
 };
 

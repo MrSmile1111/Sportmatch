@@ -46,7 +46,14 @@ export default async function MatchesPage() {
       maxPlayers: match.maxPlayers,
       participantAvatars: match.participants
         .filter((participant) => participant.status === "joined")
-        .map((participant) => userMap.get(participant.userId)?.avatar ?? "🙂"),
+        .map((participant) => {
+          const user = userMap.get(participant.userId);
+          return {
+            emoji: user?.avatar ?? "🙂",
+            src: user?.avatarUrl ?? null,
+            name: user?.name ?? "Người chơi",
+          };
+        }),
       role,
       isOpen: isMatchOpenTo(match, role),
     };

@@ -1,17 +1,25 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   CalendarDays,
   Camera,
   Crosshair,
+  Loader2,
   Save,
   Shield,
   Trophy,
   User as UserIcon,
 } from "lucide-react";
 import { saveProfileAction } from "@/app/(app)/settings/actions";
+import { locateAreaAction } from "@/app/onboarding/actions";
+import { AvatarPicker } from "@/components/profile/avatar-picker";
+import { useToast } from "@/components/ui/toast";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { getBrowserPosition } from "@/lib/browser-location";
+import { removeProfileImage } from "@/lib/profile-upload";
 import {
   AvailabilityEditor,
   type SlotRow,
@@ -28,6 +36,7 @@ import { cn } from "@/lib/utils";
 export type SettingsUser = {
   name: string;
   avatar: string;
+  avatarUrl: string | null;
   area: string;
   gender: Gender | "";
   birthday: string;
@@ -41,25 +50,6 @@ const TABS = [
   { id: "notifications", label: "Thông báo", icon: Bell },
   { id: "security", label: "Bảo mật", icon: Shield },
 ] as const;
-
-const AVATARS = [
-  "🧑‍🦱",
-  "👩",
-  "👱‍♀️",
-  "🧒",
-  "🧑🏾",
-  "🧑‍🦲",
-  "👵",
-  "👩‍🦰",
-  "🧑‍🦰",
-  "👧",
-  "😉",
-  "👩🏽",
-  "🧑‍🎤",
-  "👶",
-  "🧔",
-  "👨",
-];
 
 const GENDERS: Gender[] = ["Nam", "Nữ", "Khác"];
 
@@ -77,11 +67,22 @@ export function SettingsPanel({
   user: SettingsUser;
   sports: { id: string; name: string; icon: string }[];
 }) {
+  const router = useRouter();
+  const toast = useToast();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("profile");
   const [avatar, setAvatar] = useState(user.avatar);
+  // Ảnh upload được lưu ngay; chọn avatar hệ thống chỉ bỏ ảnh khi bấm Lưu.
+  const [photoUrl, setPhotoUrl] = useState(user.avatarUrl);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const [showAvatars, setShowAvatars] = useState(false);
   const [name, setName] = useState(user.name);
   const [area, setArea] = useState(user.area);
+  const [located, setLocated] = useState<{
+    area: string;
+    coords: { lat: number; lng: number };
+  } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
   const [gender, setGender] = useState<Gender | "">(user.gender);
   const [birthday, setBirthday] = useState(user.birthday);
   const [bio, setBio] = useState(user.bio);
@@ -102,13 +103,30 @@ export function SettingsPanel({
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  function detectArea() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((result) => {
-      setArea(
-        `${result.coords.latitude.toFixed(3)}, ${result.coords.longitude.toFixed(3)}`,
+  async function detectArea() {
+    setLocating(true);
+    setLocateError(null);
+    try {
+      const coords = await getBrowserPosition();
+      const { area: found } = await locateAreaAction(coords.lat, coords.lng);
+      const label = found ?? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+      setArea(label);
+      setLocated({ area: label, coords });
+      if (!found) {
+        setLocateError("Chưa xác định được tên khu vực — bạn có thể sửa lại.");
+      }
+    } catch (cause) {
+      setLocateError(
+        cause instanceof Error ? cause.message : "Không lấy được vị trí.",
       );
-    });
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  function pickEmoji(option: string) {
+    setAvatar(option);
+    if (photoUrl) setRemovePhoto(true);
   }
 
   function save() {
@@ -126,6 +144,8 @@ export function SettingsPanel({
         name: name.trim(),
         avatar,
         area: area.trim(),
+        coords:
+          located && located.area === area.trim() ? located.coords : null,
         gender: gender === "" ? "Khác" : gender,
         birthday,
         bio: bio.trim(),
@@ -142,8 +162,23 @@ export function SettingsPanel({
           endMinute: timeToMinutes(slot.end) ?? -1,
         })),
       });
-      if (result.error) setError(result.error);
-      else setSaved(true);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      if (removePhoto) {
+        try {
+          await removeProfileImage("avatar");
+          setPhotoUrl(null);
+          setRemovePhoto(false);
+        } catch (cause) {
+          setError(cause instanceof Error ? cause.message : null);
+          return;
+        }
+      }
+      setSaved(true);
+      // Cập nhật avatar/tên ở header.
+      router.refresh();
     });
   }
 
@@ -183,9 +218,12 @@ export function SettingsPanel({
             <section className="rounded-2xl border border-border bg-card p-6">
               <h2 className="font-heading text-lg font-bold">Ảnh đại diện</h2>
               <div className="mt-5 flex flex-wrap items-center gap-5">
-                <span className="bg-brand-gradient flex size-20 items-center justify-center rounded-full text-4xl">
-                  {avatar}
-                </span>
+                <UserAvatar
+                  emoji={avatar}
+                  src={removePhoto ? null : photoUrl}
+                  name={name}
+                  className="bg-brand-gradient size-20 text-4xl"
+                />
                 <div>
                   <button
                     type="button"
@@ -203,23 +241,24 @@ export function SettingsPanel({
               </div>
 
               {showAvatars ? (
-                <div className="mt-5 grid grid-cols-8 gap-2">
-                  {AVATARS.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => setAvatar(option)}
-                      aria-label={`Chọn avatar ${option}`}
-                      className={cn(
-                        "flex aspect-square items-center justify-center rounded-xl border text-2xl transition-colors",
-                        avatar === option
-                          ? "border-brand bg-brand/10"
-                          : "border-border hover:border-brand/50",
-                      )}
-                    >
-                      {option}
-                    </button>
-                  ))}
+                <div className="mt-6 border-t border-border pt-6">
+                  <AvatarPicker
+                    emoji={avatar}
+                    hasPhoto={!!photoUrl && !removePhoto}
+                    onPickEmoji={pickEmoji}
+                    onUploaded={(url) => {
+                      setPhotoUrl(url);
+                      setRemovePhoto(false);
+                      toast.success("Đã cập nhật ảnh đại diện.");
+                      router.refresh();
+                    }}
+                  />
+                  {removePhoto ? (
+                    <p className="mt-4 text-center text-xs text-muted-foreground">
+                      Ảnh đã tải lên sẽ được thay bằng avatar này khi bạn bấm
+                      &quot;Lưu thay đổi&quot;.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </section>
@@ -262,12 +301,22 @@ export function SettingsPanel({
                     <button
                       type="button"
                       onClick={detectArea}
-                      className="border-brand text-brand hover:bg-brand/10 inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-colors"
+                      disabled={locating}
+                      className="border-brand text-brand hover:bg-brand/10 inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-colors disabled:opacity-60"
                     >
-                      <Crosshair className="size-4" />
+                      {locating ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Crosshair className="size-4" />
+                      )}
                       Vị trí
                     </button>
                   </div>
+                  {locateError ? (
+                    <p role="alert" className="text-destructive mt-2 text-xs">
+                      {locateError}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div>

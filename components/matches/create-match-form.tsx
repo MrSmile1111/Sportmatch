@@ -29,6 +29,7 @@ import {
   getBusyCourtIdsAction,
 } from "@/app/(app)/matches/create/actions";
 import { CourtPicker } from "@/components/matches/court-picker";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type { LatLng } from "@/lib/geo";
 import {
   SKILL_LEVELS,
@@ -41,6 +42,7 @@ export type InvitableUser = {
   id: string;
   name: string;
   avatar: string;
+  avatarUrl: string | null;
   area: string;
   sportIds: string[];
   skillLabel: string;
@@ -610,9 +612,12 @@ export function CreateMatchForm({
                             : "border-border hover:border-brand/50",
                         )}
                       >
-                        <span className="bg-secondary flex size-10 items-center justify-center rounded-full text-lg">
-                          {user.avatar}
-                        </span>
+                        <UserAvatar
+                          emoji={user.avatar}
+                          src={user.avatarUrl}
+                          name={user.name}
+                          className="bg-secondary size-10 text-lg"
+                        />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-semibold">
                             {user.name}

@@ -24,6 +24,8 @@ export default async function DiscoverPage() {
       id: user.id,
       name: user.name,
       avatar: user.avatar,
+      avatarUrl: user.avatarUrl,
+      coverImageUrl: user.coverImageUrl,
       bio: user.bio,
       area: user.area,
       distanceKm: user.distanceKm,

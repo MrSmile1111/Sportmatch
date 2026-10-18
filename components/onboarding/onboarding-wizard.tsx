@@ -2,9 +2,24 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Crosshair, MapPin } from "lucide-react";
-import { completeOnboardingAction } from "@/app/onboarding/actions";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Crosshair,
+  Loader2,
+  MapPin,
+} from "lucide-react";
+import {
+  completeOnboardingAction,
+  locateAreaAction,
+} from "@/app/onboarding/actions";
 import { SiteLogo } from "@/components/layout/site-logo";
+import { AvatarPicker } from "@/components/profile/avatar-picker";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { DEFAULT_AVATAR } from "@/lib/avatar";
+import { getBrowserPosition } from "@/lib/browser-location";
+import { removeProfileImage } from "@/lib/profile-upload";
 import { WEEKDAYS, type SkillLevel, type Weekday } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -23,31 +38,16 @@ const AREA_SUGGESTIONS = [
   "Hải Châu, Đà Nẵng",
 ];
 
-const AVATARS = [
-  "🧑‍🦱",
-  "👩",
-  "👱‍♀️",
-  "🧒",
-  "🧑🏾",
-  "🧑‍🦲",
-  "👵",
-  "👩‍🦰",
-  "🧑‍🦰",
-  "👧",
-  "😉",
-  "👩🏽",
-  "🧑‍🎤",
-  "👶",
-  "🧔",
-  "👨",
-];
-
 const TOTAL_STEPS = 5;
+
+type Coords = { lat: number; lng: number };
 
 export function OnboardingWizard({
   sportOptions,
+  initialPhotoUrl,
 }: {
   sportOptions: { id: string; name: string; icon: string }[];
+  initialPhotoUrl: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -56,7 +56,15 @@ export function OnboardingWizard({
   const [sports, setSports] = useState<string[]>([]);
   const [level, setLevel] = useState<SkillLevel>("Mới chơi");
   const [area, setArea] = useState("");
-  const [avatar, setAvatar] = useState(AVATARS[2]);
+  // Toạ độ GPS — chỉ giữ khi khu vực đang hiển thị đúng là khu vực vừa định vị.
+  const [located, setLocated] = useState<{ area: string; coords: Coords } | null>(
+    null,
+  );
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR);
+  const [photoUrl, setPhotoUrl] = useState(initialPhotoUrl);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [days, setDays] = useState<Weekday[]>([]);
 
   const percent = Math.round((step / TOTAL_STEPS) * 100);
@@ -84,6 +92,44 @@ export function OnboardingWizard({
     );
   }
 
+  async function locate() {
+    setLocating(true);
+    setLocateError(null);
+    try {
+      const coords = await getBrowserPosition();
+      const { area: found } = await locateAreaAction(coords.lat, coords.lng);
+      const label = found ?? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+      setArea(label);
+      setLocated({ area: label, coords });
+      if (!found) {
+        setLocateError(
+          "Đã lấy được toạ độ nhưng chưa xác định được tên khu vực — bạn có thể sửa lại cho dễ đọc.",
+        );
+      }
+    } catch (error) {
+      setLocateError(
+        error instanceof Error ? error.message : "Không lấy được vị trí.",
+      );
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  async function pickEmoji(option: string) {
+    setAvatar(option);
+    setPhotoError(null);
+    if (!photoUrl) return;
+    // Chọn avatar hệ thống khi đang có ảnh upload → bỏ ảnh để emoji hiển thị.
+    const previous = photoUrl;
+    setPhotoUrl(null);
+    try {
+      await removeProfileImage("avatar");
+    } catch (error) {
+      setPhotoUrl(previous);
+      setPhotoError(error instanceof Error ? error.message : null);
+    }
+  }
+
   function goNext() {
     if (step === TOTAL_STEPS) {
       setSaveError(null);
@@ -92,6 +138,8 @@ export function OnboardingWizard({
           sportIds: sports,
           skillLevel: level,
           area: area.trim(),
+          coords:
+            located && located.area === area.trim() ? located.coords : null,
           avatar,
           availability: days,
         });
@@ -230,13 +278,27 @@ export function OnboardingWizard({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setArea("Tây Hồ, Hà Nội")}
-                  className="border-brand text-brand inline-flex h-12 items-center justify-center gap-2 rounded-full border px-6 text-sm font-semibold"
+                  onClick={locate}
+                  disabled={locating}
+                  className="border-brand text-brand hover:bg-brand/10 inline-flex h-12 items-center justify-center gap-2 rounded-full border px-6 text-sm font-semibold transition-colors disabled:opacity-60"
                 >
-                  <Crosshair className="size-4" />
-                  Lấy vị trí
+                  {locating ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Crosshair className="size-4" />
+                  )}
+                  {locating ? "Đang định vị..." : "Lấy vị trí"}
                 </button>
               </div>
+              {locateError ? (
+                <p role="alert" className="text-destructive mt-3 text-sm">
+                  {locateError}
+                </p>
+              ) : located && located.area === area ? (
+                <p className="text-success mt-3 text-sm">
+                  Đã định vị: {located.area}
+                </p>
+              ) : null}
               <div className="mt-5 flex flex-wrap gap-3">
                 {AREA_SUGGESTIONS.map((suggestion) => (
                   <button
@@ -265,30 +327,30 @@ export function OnboardingWizard({
                 bước này.
               </p>
               <div className="mt-8 flex justify-center">
-                <span className="bg-brand flex size-32 items-center justify-center rounded-full border-4 border-dashed border-white/60 text-6xl">
-                  {avatar}
-                </span>
+                <UserAvatar
+                  emoji={avatar}
+                  src={photoUrl}
+                  name="Ảnh hồ sơ của bạn"
+                  className="bg-brand size-32 border-4 border-dashed border-white/60 text-6xl"
+                />
               </div>
-              <p className="mt-6 text-center text-sm text-muted-foreground">
+              <p className="mt-6 mb-5 text-center text-sm text-muted-foreground">
                 Chọn một avatar có sẵn trên hệ thống:
               </p>
-              <div className="mt-5 flex flex-wrap justify-center gap-3">
-                {AVATARS.map((option, index) => (
-                  <button
-                    key={`${option}-${index}`}
-                    type="button"
-                    onClick={() => setAvatar(option)}
-                    className={cn(
-                      "bg-brand flex size-14 items-center justify-center rounded-full text-2xl transition-transform",
-                      avatar === option
-                        ? "ring-2 ring-white ring-offset-2 ring-offset-card"
-                        : "hover:scale-105",
-                    )}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+              <AvatarPicker
+                emoji={avatar}
+                hasPhoto={!!photoUrl}
+                onPickEmoji={pickEmoji}
+                onUploaded={(url) => {
+                  setPhotoError(null);
+                  setPhotoUrl(url);
+                }}
+              />
+              {photoError ? (
+                <p role="alert" className="text-destructive mt-3 text-center text-sm">
+                  {photoError}
+                </p>
+              ) : null}
             </>
           )}
 

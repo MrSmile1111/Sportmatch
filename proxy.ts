@@ -8,7 +8,6 @@ import type { NextRequest } from "next/server";
  */
 const PROTECTED_PREFIXES = [
   "/discover",
-  "/map",
   "/matches",
   "/courts",
   "/ranking",

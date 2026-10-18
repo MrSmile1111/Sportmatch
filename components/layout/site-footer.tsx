@@ -1,34 +1,41 @@
 import Link from "next/link";
 import { SiteLogo } from "@/components/layout/site-logo";
 
-const footerGroups = [
-  {
-    title: "Sản phẩm",
-    links: [
-      { label: "Khám phá", href: "/discover" },
-      { label: "Bản đồ", href: "/map" },
-      { label: "Trận đấu", href: "/matches" },
-      { label: "Sân bãi", href: "/courts" },
-      { label: "Xếp hạng", href: "/ranking" },
-    ],
-  },
-  {
-    title: "Môn thể thao",
-    links: [
-      { label: "Cầu lông", href: "/matches" },
-      { label: "Pickleball", href: "/matches" },
-    ],
-  },
-  {
-    title: "Tài khoản",
-    links: [
-      { label: "Đăng nhập", href: "/login" },
-      { label: "Đăng ký miễn phí", href: "/register" },
-    ],
-  },
+type FooterLink = { label: string; href: string };
+
+const PRODUCT_LINKS: FooterLink[] = [
+  { label: "Khám phá", href: "/discover" },
+  { label: "Trận đấu", href: "/matches" },
+  { label: "Sân bãi", href: "/courts" },
+  { label: "Xếp hạng", href: "/ranking" },
 ];
 
-export function SiteFooter() {
+const SPORT_LINKS: FooterLink[] = [
+  { label: "Cầu lông", href: "/matches" },
+  { label: "Pickleball", href: "/matches" },
+];
+
+/**
+ * Các trang "Sản phẩm" cần đăng nhập: khách bấm vào sẽ được chuyển sang trang
+ * Đăng nhập (proxy.ts) rồi quay lại đúng trang sau khi đăng nhập.
+ */
+export function SiteFooter({ viewerId }: { viewerId: string | null }) {
+  const accountLinks: FooterLink[] = viewerId
+    ? [
+        { label: "Hồ sơ cá nhân", href: `/profile/${viewerId}` },
+        { label: "Cài đặt tài khoản", href: "/settings" },
+      ]
+    : [
+        { label: "Đăng nhập", href: "/login" },
+        { label: "Đăng ký miễn phí", href: "/register" },
+      ];
+
+  const footerGroups = [
+    { title: "Sản phẩm", links: PRODUCT_LINKS },
+    { title: "Môn thể thao", links: SPORT_LINKS },
+    { title: "Tài khoản", links: accountLinks },
+  ];
+
   return (
     <footer className="border-t border-border/70 bg-card/40">
       <div className="mx-auto w-full max-w-6xl px-6 py-14">

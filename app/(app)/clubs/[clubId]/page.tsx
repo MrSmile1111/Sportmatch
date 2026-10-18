@@ -46,7 +46,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ clu
     isOwner
       ? prisma.clubMembership.findMany({
           where: { clubId, status: "PENDING" },
-          include: { user: { select: { name: true, avatar: true, area: true } } },
+          include: { user: { select: { name: true, avatar: true, image: true, area: true } } },
           orderBy: { requestedAt: "asc" },
         })
       : Promise.resolve([]),
@@ -89,6 +89,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ clu
       userId: request.userId,
       name: request.user.name,
       avatar: request.user.avatar,
+      avatarUrl: request.user.image,
       area: request.user.area,
     })),
   };

@@ -28,7 +28,6 @@ app/
   (app)/                     # route group sau khi đăng nhập, dùng chung layout header
     layout.tsx
     discover/page.tsx
-    map/page.tsx
     matches/
       page.tsx
       create/page.tsx

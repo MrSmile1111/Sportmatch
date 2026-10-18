@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Trophy, Users } from "lucide-react";
+import { displayEmoji } from "@/lib/avatar";
 import type { ConversationKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +42,9 @@ export function ChatAvatar({
         {image ? (
           <Image src={image} alt={name} width={80} height={80} unoptimized className="size-full object-cover" />
         ) : (
-          <span aria-hidden>{emoji}</span>
+          <span aria-hidden className="leading-none">
+            {kind === "direct" ? displayEmoji(emoji) : emoji}
+          </span>
         )}
       </span>
       {KindIcon && size !== "sm" ? (

@@ -69,6 +69,37 @@ export async function POST(request: NextRequest) {
   }
   if (previous) await imageStorage.remove(previous);
 
-  revalidatePath(`/profile/${userId}`);
+  // Ảnh đại diện hiện ở header của mọi trang → làm mới cả layout.
+  revalidatePath("/", "layout");
   return NextResponse.json({ url });
+}
+
+/**
+ * Bỏ ảnh đại diện / ảnh bìa đã upload của CHÍNH user đang đăng nhập — hồ sơ
+ * quay về avatar emoji / ảnh bìa mặc định. Query: `?kind=avatar|cover`.
+ */
+export async function DELETE(request: NextRequest) {
+  const userId = await getSessionUserId();
+  if (!userId) return error("Bạn cần đăng nhập để cập nhật ảnh.", 401);
+
+  const origin = request.headers.get("origin");
+  if (origin && new URL(origin).host !== request.headers.get("host")) {
+    return error("Yêu cầu không hợp lệ.", 403);
+  }
+
+  const kind = request.nextUrl.searchParams.get("kind");
+  if (!PROFILE_IMAGE_KINDS.includes(kind as ProfileImageKind)) {
+    return error("Loại ảnh không hợp lệ.", 400);
+  }
+
+  let previous: string | null;
+  try {
+    previous = await replaceUserImage(userId, kind as ProfileImageKind, null);
+  } catch {
+    return error("Không xoá được ảnh. Vui lòng thử lại.", 500);
+  }
+  if (previous) await imageStorage.remove(previous);
+
+  revalidatePath("/", "layout");
+  return NextResponse.json({ ok: true });
 }

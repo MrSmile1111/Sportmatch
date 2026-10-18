@@ -32,6 +32,7 @@ export default async function RankingPage() {
       id: user.id,
       name: user.name,
       avatar: user.avatar,
+      avatarUrl: user.avatarUrl,
       isPro: user.isPro,
       sportIcons: user.sports.map(
         (sport) => sportMap.get(sport.sportId)?.icon ?? "🏅",

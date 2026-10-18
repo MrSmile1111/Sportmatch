@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Camera, ImageIcon } from "lucide-react";
 import { ImageCropDialog } from "@/components/profile/image-crop-dialog";
 import { useToast } from "@/components/ui/toast";
@@ -11,30 +12,8 @@ import {
   validateImageFile,
   type ProfileImageKind,
 } from "@/lib/profile-media";
-
-const UPLOAD_ERROR = "Tải ảnh lên thất bại. Vui lòng thử lại.";
-
-async function uploadProfileImage(
-  kind: ProfileImageKind,
-  blob: Blob,
-): Promise<string> {
-  const form = new FormData();
-  form.append("kind", kind);
-  form.append("file", blob, `${kind}.${blob.type.split("/")[1] ?? "img"}`);
-
-  let response: Response;
-  try {
-    response = await fetch("/api/profile/images", { method: "POST", body: form });
-  } catch {
-    throw new Error(UPLOAD_ERROR);
-  }
-
-  const body: { url?: string; error?: string } | null = await response
-    .json()
-    .catch(() => null);
-  if (!response.ok || !body?.url) throw new Error(body?.error ?? UPLOAD_ERROR);
-  return body.url;
-}
+import { uploadProfileImage } from "@/lib/profile-upload";
+import { displayEmoji } from "@/lib/avatar";
 
 /**
  * Phần đầu trang hồ sơ: ảnh bìa + avatar chồng lên ảnh bìa. `children` là phần
@@ -60,6 +39,7 @@ export function ProfileHeader({
   isOwnProfile: boolean;
   children: ReactNode;
 }) {
+  const router = useRouter();
   const toast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const pickingKind = useRef<ProfileImageKind>("avatar");
@@ -106,6 +86,8 @@ export function ProfileHeader({
     else setCoverUrl(url);
     toast.success(PROFILE_IMAGE_SPECS[editing.kind].successMessage);
     closeEditor();
+    // Cập nhật avatar ở header và các phần khác của trang.
+    router.refresh();
   }
 
   return (
@@ -157,8 +139,8 @@ export function ProfileHeader({
                   onError={() => markBroken(avatarUrl)}
                 />
               ) : (
-                <span className="bg-brand-gradient flex size-full items-center justify-center text-5xl sm:text-6xl">
-                  {avatarEmoji}
+                <span className="bg-brand-gradient flex size-full items-center justify-center text-5xl leading-none sm:text-6xl">
+                  {displayEmoji(avatarEmoji)}
                 </span>
               )}
             </AvatarFrame>

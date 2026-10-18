@@ -4,20 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
-import { saveCreatedClub } from "@/lib/clubs/demo-storage";
-import { CLUB_SPORTS, type Club, type ClubSport } from "@/lib/clubs/mock-data";
+import { CLUB_SPORTS, type ClubSport } from "@/lib/clubs/mock-data";
 
-const sportIcons: Record<ClubSport, string> = {
-  "Bóng đá": "⚽",
-  "Bóng rổ": "🏀",
-  "Cầu lông": "🏸",
-  "Bóng bàn": "🏓",
-  Tennis: "🎾",
-  Pickleball: "🏓",
-  "Võ thuật": "🥋",
-};
-
-export function CreateClubPage({ preview = false }: { preview?: boolean }) {
+export function CreateClubPage() {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -41,39 +30,7 @@ export function CreateClubPage({ preview = false }: { preview?: boolean }) {
       return;
     }
 
-    const club: Club = {
-      id: `club-${Date.now()}`,
-      name,
-      sportType,
-      area,
-      logo: sportIcons[sportType],
-      rating: 5,
-      memberCount: 1,
-      capacity,
-      recruitmentCount: capacity - 1,
-      positions: [],
-      level: "Người mới",
-      schedule: schedule.length ? schedule : ["T7"],
-      time: "19:00–21:00",
-      fee,
-      activityCount: 0,
-      activityRate: 0,
-      responseRate: 100,
-      foundedMonths: 0,
-      description,
-      status: "Đang hoạt động",
-      nextActivity: { title: "Chưa có hoạt động", kind: "Tập luyện", date: "Chưa lên lịch", time: "19:00–21:00", venue: area, joined: 0, capacity },
-      members: ["Bạn"],
-      achievements: { events: 0, wins: 0, draws: 0, losses: 0 },
-    };
-
     try {
-      if (preview) {
-        saveCreatedClub(club);
-        router.push("/preview/explore-clubs");
-        return;
-      }
-
       const response = await fetch("/api/clubs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,7 +51,7 @@ export function CreateClubPage({ preview = false }: { preview?: boolean }) {
     }
   }
 
-  const backHref = preview ? "/preview/explore-clubs" : "/clubs";
+  const backHref = "/clubs";
 
   return <main className="min-h-screen bg-slate-50 px-4 py-7 text-slate-900 md:px-6"><div className="mx-auto max-w-3xl"><Link href={backHref} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-orange-600"><ArrowLeft className="size-4" /> Quay lại danh sách</Link><div className="mt-5 rounded-xl border border-slate-200 bg-white p-5 md:p-7"><p className="text-sm font-semibold text-orange-600">Cộng đồng SportMatch</p><h1 className="mt-1 text-2xl font-bold">Tạo câu lạc bộ</h1><p className="mt-2 text-sm text-slate-600">Bắt đầu xây dựng đội nhóm, tuyển thành viên và lên lịch hoạt động.</p>
     <form onSubmit={createClub} className="mt-6 space-y-5"><div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold">Tên CLB<input name="name" required maxLength={80} className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-200 px-3 font-normal outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100" placeholder="VD: Cầu Lông Sunrise" /></label><label className="block text-sm font-semibold">Môn thể thao<select name="sportType" className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 font-normal outline-none focus:border-orange-400">{CLUB_SPORTS.map((sport) => <option key={sport}>{sport}</option>)}</select></label></div>

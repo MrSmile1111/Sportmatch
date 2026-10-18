@@ -29,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -43,6 +44,7 @@ export function AppHeader({
   userId,
   displayName,
   avatar,
+  avatarUrl,
   isPro,
   unreadNotifications,
   unreadMessages,
@@ -50,6 +52,7 @@ export function AppHeader({
   userId: string;
   displayName: string;
   avatar: string;
+  avatarUrl: string | null;
   isPro: boolean;
   unreadNotifications: number;
   unreadMessages: number;
@@ -128,9 +131,12 @@ export function AppHeader({
 
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-2 rounded-full border border-border py-1 pr-3 pl-1 transition-colors hover:bg-secondary">
-              <span className="bg-brand flex size-8 items-center justify-center rounded-full text-base">
-                {avatar}
-              </span>
+              <UserAvatar
+                emoji={avatar}
+                src={avatarUrl}
+                name={displayName}
+                className="bg-brand size-8 text-base"
+              />
               <span className="text-sm font-semibold">{displayName}</span>
               <ChevronDown className="size-4 text-muted-foreground" />
             </DropdownMenuTrigger>

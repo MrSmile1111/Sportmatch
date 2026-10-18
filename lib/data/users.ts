@@ -5,7 +5,7 @@ import {
   MAX_PREFERRED_AREAS,
   isPlayArea,
 } from "@/lib/areas";
-import { requireUserId } from "@/lib/auth/session";
+import { getSessionUserId, requireUserId } from "@/lib/auth/session";
 import { DAY_END_MINUTE, sortSlots, validateSlots } from "@/lib/availability";
 import {
   GENDER_FROM_DB,
@@ -20,6 +20,7 @@ import {
 } from "@/lib/db/mappers";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { distanceKm, roundKm, type LatLng } from "@/lib/geo";
+import { geocodeArea } from "@/lib/osm/geocode";
 import { prisma } from "@/lib/prisma";
 import type { ProfileImageKind } from "@/lib/profile-media";
 import {
@@ -174,6 +175,35 @@ export async function getCurrentUser(): Promise<User> {
   return toDomainUser(row);
 }
 
+export type ViewerSummary = {
+  id: string;
+  name: string;
+  avatar: string;
+  avatarUrl: string | null;
+};
+
+/**
+ * Người đang xem trang công khai (landing...) nếu đã đăng nhập, ngược lại
+ * `null`. Không redirect và không ném lỗi — trang công khai vẫn phải hiển thị
+ * được khi database tạm thời không truy cập được.
+ */
+export async function getViewerSummary(): Promise<ViewerSummary | null> {
+  try {
+    const userId = await getSessionUserId();
+    if (!userId) return null;
+    const row = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, avatar: true, image: true },
+    });
+    return row
+      ? { id: row.id, name: row.name, avatar: row.avatar, avatarUrl: row.image }
+      : null;
+  } catch (error) {
+    console.error("getViewerSummary thất bại:", error);
+    return null;
+  }
+}
+
 export type UserSportInput = {
   sportId: string;
   skillLevel: SkillLevel;
@@ -186,6 +216,8 @@ export type UserProfileInput = {
   name: string;
   avatar: string;
   area: string;
+  /** Toạ độ từ GPS khi bấm "Vị trí"; bỏ trống thì tra từ `area` nếu đổi. */
+  coords?: LatLng | null;
   gender: Gender;
   birthday: string;
   bio: string;
@@ -246,6 +278,14 @@ export async function updateCurrentUser(
   const userId = await requireUserId();
   await assertValidSportProfile(input);
 
+  const current = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { area: true },
+  });
+  const coords =
+    input.coords ??
+    (input.area !== current.area ? await geocodeArea(input.area) : null);
+
   await prisma.$transaction([
     prisma.user.update({
       where: { id: userId },
@@ -253,6 +293,7 @@ export async function updateCurrentUser(
         name: input.name,
         avatar: input.avatar,
         area: input.area,
+        ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
         gender: GENDER_TO_DB[input.gender],
         birthday: input.birthday ? new Date(input.birthday) : null,
         bio: input.bio,
@@ -298,14 +339,14 @@ const IMAGE_COLUMN = {
 } as const satisfies Record<ProfileImageKind, string>;
 
 /**
- * Ghi URL ảnh đại diện / ảnh bìa mới cho `userId` và trả về URL cũ (để dọn
- * file). Hàm KHÔNG tự kiểm tra quyền — nơi gọi phải truyền đúng user của phiên
+ * Ghi URL ảnh đại diện / ảnh bìa mới (hoặc `null` để bỏ ảnh) cho `userId` và
+ * trả về URL cũ (để dọn file). Hàm KHÔNG tự kiểm tra quyền — nơi gọi phải truyền đúng user của phiên
  * đăng nhập.
  */
 export async function replaceUserImage(
   userId: string,
   kind: ProfileImageKind,
-  url: string,
+  url: string | null,
 ): Promise<string | null> {
   const column = IMAGE_COLUMN[kind];
   const previous = await prisma.user.findUniqueOrThrow({
@@ -322,6 +363,8 @@ export async function replaceUserImage(
 export type OnboardingInput = {
   avatar: string;
   area: string;
+  /** Toạ độ từ GPS ở bước 3; bỏ trống thì tra từ `area`. */
+  coords?: LatLng | null;
   sports: { sportId: string; skillLevel: SkillLevel }[];
   /** Onboarding chỉ hỏi ngày → mỗi ngày lưu thành khung "cả ngày". */
   availability: Weekday[];
@@ -332,6 +375,8 @@ export async function completeOnboarding(
   input: OnboardingInput,
 ): Promise<void> {
   const userId = await requireUserId();
+  // Toạ độ dùng để tính khoảng cách ở Khám phá / Trận đấu.
+  const coords = input.coords ?? (await geocodeArea(input.area));
 
   await prisma.$transaction([
     prisma.user.update({
@@ -339,6 +384,7 @@ export async function completeOnboarding(
       data: {
         avatar: input.avatar,
         area: input.area,
+        ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
         onboardedAt: new Date(),
       },
     }),

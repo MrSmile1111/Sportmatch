@@ -23,6 +23,7 @@ import {
   isMatchOpenTo,
   viewerRole,
 } from "@/lib/data/matches";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { getSports } from "@/lib/data/sports";
 import { getCurrentUser, getUsers } from "@/lib/data/users";
 import { formatDateTime } from "@/lib/format";
@@ -263,9 +264,12 @@ function PlayerRow({
 }) {
   return (
     <li className="flex items-center gap-3">
-      <span className="bg-brand flex size-10 shrink-0 items-center justify-center rounded-full text-lg">
-        {user.avatar}
-      </span>
+      <UserAvatar
+        emoji={user.avatar}
+        src={user.avatarUrl}
+        name={user.name}
+        className="bg-brand size-10 text-lg"
+      />
       <div className="min-w-0 flex-1">
         <Link
           href={`/profile/${user.id}`}

@@ -15,6 +15,13 @@ const profileSchema = z.object({
   name: z.string().trim().min(1, "Vui lòng nhập họ tên.").max(80),
   avatar: z.string().max(16),
   area: z.string().trim().max(120),
+  coords: z
+    .object({
+      lat: z.number().min(-90).max(90),
+      lng: z.number().min(-180).max(180),
+    })
+    .nullable()
+    .optional(),
   gender: z.enum(["Nam", "Nữ", "Khác"]),
   birthday: z.string().max(10),
   bio: z.string().trim().max(500),
@@ -53,10 +60,9 @@ export async function saveProfileAction(
   }
 
   try {
-    const user = await updateCurrentUser(parsed.data);
-    revalidatePath("/settings");
-    revalidatePath(`/profile/${user.id}`);
-    revalidatePath("/discover");
+    await updateCurrentUser(parsed.data);
+    // Tên và avatar hiện ở header của mọi trang → làm mới cả layout.
+    revalidatePath("/", "layout");
     return { error: null };
   } catch (error) {
     if (error instanceof ProfileInputError) return { error: error.message };

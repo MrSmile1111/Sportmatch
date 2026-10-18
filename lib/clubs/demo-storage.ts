@@ -21,13 +21,6 @@ export function getCreatedClubs(): Club[] {
   return createdClubsSnapshot;
 }
 
-export function saveCreatedClub(club: Club) {
-  const clubs = [...getCreatedClubs(), club];
-  localStorage.setItem(createdClubsKey, JSON.stringify(clubs));
-  createdClubsSnapshot = clubs;
-  createdListeners.forEach((listener) => listener());
-}
-
 export function subscribeCreatedClubs(listener: () => void) {
   createdListeners.add(listener);
   const handleStorage = () => {

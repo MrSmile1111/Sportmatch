@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { MatchCardAction } from "@/components/matches/match-actions";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { formatDateTime } from "@/lib/format";
 import { SKILL_LEVELS, type ViewerRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -30,7 +31,7 @@ export type MatchCardData = {
   skillRequirement: string;
   joined: number;
   maxPlayers: number;
-  participantAvatars: string[];
+  participantAvatars: { emoji: string; src: string | null; name: string }[];
   role: ViewerRole;
   isOpen: boolean;
 };
@@ -267,12 +268,13 @@ export function MatchesBoard({
                   <div className="flex items-center justify-between pt-3">
                     <div className="flex -space-x-2">
                       {match.participantAvatars.map((avatar, index) => (
-                        <span
+                        <UserAvatar
                           key={`${match.id}-${index}`}
-                          className="bg-brand border-card flex size-8 items-center justify-center rounded-full border-2 text-sm"
-                        >
-                          {avatar}
-                        </span>
+                          emoji={avatar.emoji}
+                          src={avatar.src}
+                          name={avatar.name}
+                          className="bg-brand border-card size-8 border-2 text-sm"
+                        />
                       ))}
                     </div>
                     <MatchCardAction

@@ -19,7 +19,7 @@ Toàn bộ UI/UX giai đoạn 1 dựa trên các ảnh chụp màn hình gốc n
 | `screencapture-...-onboarding-*_16_14.png` | Onboarding bước 4/5 — Chọn ảnh hồ sơ |
 | `screencapture-...-onboarding-*_16_23.png` | Onboarding bước 5/5 — Chọn lịch rảnh |
 | `screencapture-...-main-discover-*.png` | Khám phá — swipe tìm người chơi |
-| `screencapture-...-main-map-*.png` | Bản đồ người chơi |
+| `screencapture-...-main-map-*.png` | Bản đồ người chơi — **đã bỏ, không làm** (2026-10-18) |
 | `screencapture-...-main-matches-*_18_47.png` | Danh sách Trận đấu |
 | `screencapture-...-main-matches-create-*.png` | Tạo trận đấu mới |
 | `screencapture-...-main-courts-*.png` | Danh sách + bản đồ Sân bãi |

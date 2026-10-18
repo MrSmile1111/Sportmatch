@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { getViewerSummary } from "@/lib/data/users";
 import { RANK_TIERS } from "@/lib/ranking";
 import { cn } from "@/lib/utils";
 
@@ -201,10 +202,13 @@ const scoreFormula = [
   { label: "Điểm cộng đồng", formula: "Votes × 2" },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // Đã đăng nhập → nút dẫn thẳng vào app thay vì "Đăng nhập"/"Đăng ký".
+  const viewer = await getViewerSummary();
+
   return (
     <>
-      <SiteHeader />
+      <SiteHeader viewer={viewer} />
 
       <main className="flex-1">
         <section className="relative overflow-hidden">
@@ -237,17 +241,17 @@ export default function LandingPage() {
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link
-                  href="/register"
+                  href={viewer ? "/discover" : "/register"}
                   className="bg-brand-gradient shadow-brand/30 inline-flex items-center gap-2 rounded-full px-7 py-3.5 font-semibold text-white shadow-xl transition-opacity hover:opacity-90"
                 >
-                  Bắt đầu miễn phí
+                  {viewer ? "Vào SportMatch" : "Bắt đầu miễn phí"}
                   <ArrowRight className="size-4" />
                 </Link>
                 <Link
-                  href="/login"
+                  href={viewer ? "/matches/create" : "/login"}
                   className="inline-flex items-center rounded-full border border-border px-7 py-3.5 font-semibold transition-colors hover:bg-secondary"
                 >
-                  Đăng nhập
+                  {viewer ? "Tạo trận" : "Đăng nhập"}
                 </Link>
               </div>
 
@@ -564,17 +568,17 @@ export default function LandingPage() {
               khu vực của bạn.
             </p>
             <Link
-              href="/register"
+              href={viewer ? "/matches" : "/register"}
               className="bg-brand-gradient shadow-brand/30 mt-8 inline-flex items-center gap-2 rounded-full px-8 py-4 font-semibold text-white shadow-xl transition-opacity hover:opacity-90"
             >
-              Đăng ký miễn phí
+              {viewer ? "Tìm trận ngay" : "Đăng ký miễn phí"}
               <ArrowRight className="size-4" />
             </Link>
           </div>
         </section>
       </main>
 
-      <SiteFooter />
+      <SiteFooter viewerId={viewer?.id ?? null} />
     </>
   );
 }

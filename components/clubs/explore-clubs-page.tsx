@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ClubCard } from "@/components/clubs/club-card";
 import { SidebarFilter, type FilterValue, type SportFilter } from "@/components/clubs/sidebar-filter";
 import { DEMO_PREFERENCES, mockClubs, type Club } from "@/lib/clubs/mock-data";
-import { getCreatedClubs, getPendingClubRequests, getServerCreatedClubs, getServerPendingClubRequests, saveClubRequest, subscribeClubRequests, subscribeCreatedClubs } from "@/lib/clubs/demo-storage";
+import { getCreatedClubs, getPendingClubRequests, getServerCreatedClubs, getServerPendingClubRequests, subscribeClubRequests, subscribeCreatedClubs } from "@/lib/clubs/demo-storage";
 
 const defaultFilters: FilterValue = {
   sport: "Tất cả",
@@ -57,7 +57,7 @@ function matchesFee(fee: number, selected: FilterValue["fee"]) {
   return fee > 100000;
 }
 
-export function ExploreClubsPage({ preview = false, persistentClubs = [] }: { preview?: boolean; persistentClubs?: Club[] }) {
+export function ExploreClubsPage({ persistentClubs = [] }: { persistentClubs?: Club[] }) {
   const [filters, setFilters] = useState(defaultFilters);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("match");
@@ -92,7 +92,7 @@ export function ExploreClubsPage({ preview = false, persistentClubs = [] }: { pr
 
   const recommended = [...clubs].sort((a, b) => matchScore(b) - matchScore(a)).slice(0, 3);
   const activeFilterCount = Object.entries(filters).filter(([key, value]) => key === "location" ? value !== "" : value !== "Tất cả").length;
-  const hrefFor = (clubId: string) => preview ? `/preview/clubs/${clubId}` : `/clubs/${clubId}`;
+  const hrefFor = (clubId: string) => `/clubs/${clubId}`;
 
   function resetFilters() {
     setFilters(defaultFilters);
@@ -102,13 +102,6 @@ export function ExploreClubsPage({ preview = false, persistentClubs = [] }: { pr
 
   async function submitJoinRequest() {
     if (!joinTarget) return;
-
-    if (preview) {
-      saveClubRequest(joinTarget.id);
-      setJoinMessage(`Đã gửi yêu cầu demo tham gia ${joinTarget.name}.`);
-      setJoinTarget(null);
-      return;
-    }
 
     if (!persistentClubIds.has(joinTarget.id)) {
       setJoinMessage("CLB dữ liệu mẫu chỉ để xem thử; yêu cầu tham gia chưa được gửi.");
@@ -135,7 +128,7 @@ export function ExploreClubsPage({ preview = false, persistentClubs = [] }: { pr
             <h1 className="mt-1 text-3xl font-bold tracking-tight md:text-4xl">Câu lạc bộ</h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-600 md:text-base">Khám phá những câu lạc bộ thể thao phù hợp với bạn.</p>
           </div>
-          <Link href={preview ? "/preview/clubs/create" : "/clubs/create"} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-orange-500 px-4 text-sm font-semibold text-white transition hover:bg-orange-600">
+          <Link href="/clubs/create" className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-orange-500 px-4 text-sm font-semibold text-white transition hover:bg-orange-600">
             <Plus className="size-4" /> Tạo CLB
           </Link>
         </header>

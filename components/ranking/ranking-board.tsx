@@ -16,6 +16,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { RANK_TIERS } from "@/lib/ranking";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ export type RankedPlayer = {
   id: string;
   name: string;
   avatar: string;
+  avatarUrl: string | null;
   isPro: boolean;
   sportIcons: string[];
   sportIds: string[];
@@ -273,9 +275,12 @@ export function RankingBoard({
                       </td>
                       <td className="px-3 py-4">
                         <div className="flex items-center gap-3">
-                          <span className="bg-secondary flex size-10 shrink-0 items-center justify-center rounded-full text-lg">
-                            {player.avatar}
-                          </span>
+                          <UserAvatar
+                            emoji={player.avatar}
+                            src={player.avatarUrl}
+                            name={player.name}
+                            className="bg-secondary size-10 text-lg"
+                          />
                           <div className="min-w-0">
                             <Link
                               href={`/profile/${player.id}`}
@@ -485,14 +490,15 @@ function PodiumSlot({
   return (
     <div className="flex flex-col items-center">
       <div className="relative">
-        <span
+        <UserAvatar
+          emoji={player.avatar}
+          src={player.avatarUrl}
+          name={player.name}
           className={cn(
-            "bg-brand-gradient flex size-16 items-center justify-center rounded-full text-3xl ring-4 sm:size-20",
+            "bg-brand-gradient size-16 text-3xl ring-4 sm:size-20",
             style.ring,
           )}
-        >
-          {player.avatar}
-        </span>
+        />
         <span
           className={cn(
             "absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full",

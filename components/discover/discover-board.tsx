@@ -36,6 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { openDirectChatAction } from "@/app/(app)/chat/actions";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { WEEKDAYS, WEEKDAY_SHORT, type Weekday } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,8 @@ export type DiscoverUser = {
   id: string;
   name: string;
   avatar: string;
+  avatarUrl: string | null;
+  coverImageUrl: string | null;
   bio: string;
   area: string;
   distanceKm: number;
@@ -160,6 +163,8 @@ function createMockPlayers(
       id: `demo-player-${index + 1}`,
       name: player.name,
       avatar: player.avatar,
+      avatarUrl: null,
+      coverImageUrl: null,
       bio: player.bio,
       area: player.area,
       distanceKm: player.distanceKm,
@@ -806,16 +811,31 @@ export function DiscoverBoard({
                   key={player.id}
                   className="group overflow-hidden rounded-3xl border border-border bg-card transition duration-200 hover:-translate-y-1 hover:border-orange-500/50 hover:shadow-xl hover:shadow-orange-950/5"
                 >
-                  <div className="from-orange-500/15 relative flex h-36 items-center justify-center bg-gradient-to-br via-secondary/40 to-card">
-                    <span className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-background/90 px-2.5 py-1 text-xs font-semibold backdrop-blur">
+                  <div className="from-orange-500/15 relative flex h-36 items-center justify-center overflow-hidden bg-gradient-to-br via-secondary/40 to-card">
+                    {player.coverImageUrl ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element -- ảnh người dùng qua /api/media */}
+                        <img
+                          src={player.coverImageUrl}
+                          alt=""
+                          aria-hidden
+                          className="absolute inset-0 size-full object-cover"
+                        />
+                        <span className="absolute inset-0 bg-black/25" />
+                      </>
+                    ) : null}
+                    <span className="absolute right-4 top-4 z-10 flex items-center gap-1.5 rounded-full bg-background/90 px-2.5 py-1 text-xs font-semibold backdrop-blur">
                       <span className={cn("size-2 rounded-full", player.isOnline ? "bg-emerald-500" : "bg-muted-foreground/40")} />
                       {player.isOnline ? "Online" : "Offline"}
                     </span>
-                    <span className="flex size-20 items-center justify-center rounded-full border-4 border-background bg-orange-500/10 text-5xl shadow-md transition-transform group-hover:scale-105">
-                      {player.avatar}
-                    </span>
+                    <UserAvatar
+                      emoji={player.avatar}
+                      src={player.avatarUrl}
+                      name={player.name}
+                      className="relative z-10 size-20 border-4 border-background bg-orange-500/10 text-5xl shadow-md transition-transform group-hover:scale-105"
+                    />
                     {player.sports[0] ? (
-                      <span className="absolute bottom-3 left-4 rounded-full bg-background/90 px-3 py-1 text-xs font-semibold backdrop-blur">
+                      <span className="absolute bottom-3 left-4 z-10 rounded-full bg-background/90 px-3 py-1 text-xs font-semibold backdrop-blur">
                         {player.sports[0].icon} {player.sports[0].name}
                       </span>
                     ) : null}
@@ -931,9 +951,12 @@ export function DiscoverBoard({
                   key={invitation.id}
                   className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center"
                 >
-                  <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-orange-500/10 text-2xl">
-                    {invitation.player.avatar}
-                  </span>
+                  <UserAvatar
+                    emoji={invitation.player.avatar}
+                    src={invitation.player.avatarUrl}
+                    name={invitation.player.name}
+                    className="size-12 bg-orange-500/10 text-2xl"
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{invitation.player.name}</p>
                     <p className="mt-1 truncate text-sm text-muted-foreground">

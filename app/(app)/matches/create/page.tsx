@@ -25,6 +25,7 @@ export default async function CreateMatchPage() {
       id: user.id,
       name: user.name,
       avatar: user.avatar,
+      avatarUrl: user.avatarUrl,
       area: user.area,
       sportIds: user.sports.map((sport) => sport.sportId),
       skillLabel: user.sports.map((sport) => sport.skillLevel).join(" · "),

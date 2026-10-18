@@ -28,7 +28,7 @@ export async function GET(_request: Request, { params }: Context) {
     isOwner
       ? prisma.clubMembership.findMany({
           where: { clubId, status: "PENDING" },
-          select: { userId: true, user: { select: { name: true, avatar: true, area: true } } },
+          select: { userId: true, user: { select: { name: true, avatar: true, image: true, area: true } } },
           orderBy: { requestedAt: "asc" },
         })
       : Promise.resolve([]),
@@ -41,6 +41,7 @@ export async function GET(_request: Request, { params }: Context) {
       userId: request.userId,
       name: request.user.name,
       avatar: request.user.avatar,
+      avatarUrl: request.user.image,
       area: request.user.area,
     })),
   });
