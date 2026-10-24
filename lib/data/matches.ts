@@ -341,7 +341,13 @@ async function setJoined(tx: Tx, matchId: string, userId: string) {
 
 async function notify(
   tx: Tx,
-  input: { userId: string; type: "INVITE" | "JOIN"; title: string; body: string; matchId: string },
+  input: {
+    userId: string;
+    type: "INVITE" | "JOIN" | "RATING" | "SYSTEM";
+    title: string;
+    body: string;
+    matchId: string;
+  },
 ) {
   await tx.notification.create({
     data: {
@@ -473,6 +479,19 @@ export async function leaveMatch(matchId: string): Promise<void> {
       where: { matchId_userId: { matchId, userId } },
       data: { status: "LEFT" },
     });
+
+    // Trừ 5 điểm uy tín do rời/bỏ trận đấu đã tham gia
+    const leavingUser = await tx.user.findUnique({
+      where: { id: userId },
+      select: { trustScore: true },
+    });
+    if (leavingUser) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { trustScore: Math.max(0, leavingUser.trustScore - 5) },
+      });
+    }
+
     await tx.conversationMember.deleteMany({
       where: { userId, conversation: { matchId } },
     });
@@ -523,3 +542,79 @@ export async function reviewJoinRequest(
     });
   });
 }
+
+/**
+ * Chủ trận xác nhận hoàn thành trận đấu (chuyển trạng thái sang COMPLETED),
+ * đồng thời gửi thông báo yêu cầu đánh giá tới tất cả người chơi tham gia trận.
+ */
+export async function completeMatch(matchId: string): Promise<void> {
+  const userId = await requireUserId();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Match" WHERE id = ${matchId} FOR UPDATE`;
+
+    const match = await tx.match.findUnique({
+      where: { id: matchId },
+      select: {
+        id: true,
+        title: true,
+        hostId: true,
+        status: true,
+        participants: {
+          where: { status: "JOINED" },
+          select: { userId: true },
+        },
+      },
+    });
+
+    if (!match) throw new MatchActionError("Trận đấu không tồn tại.");
+    if (match.hostId !== userId) {
+      throw new MatchActionError("Chỉ chủ trận mới có quyền hoàn thành trận đấu.");
+    }
+    if (match.status === "COMPLETED") {
+      throw new MatchActionError("Trận đấu này đã hoàn thành trước đó.");
+    }
+
+    await tx.match.update({
+      where: { id: matchId },
+      data: { status: "COMPLETED" },
+    });
+
+    // Thu thập tất cả người tham gia: các thành viên JOINED + chủ trận
+    const participantUserIds = new Set<string>();
+    participantUserIds.add(match.hostId);
+    for (const p of match.participants) {
+      participantUserIds.add(p.userId);
+    }
+
+    // Tăng 2 điểm uy tín (tối đa 100) cho mỗi thành viên hoàn thành trận đấu đúng hẹn
+    for (const pUserId of participantUserIds) {
+      const pUser = await tx.user.findUnique({
+        where: { id: pUserId },
+        select: { trustScore: true },
+      });
+      if (pUser) {
+        await tx.user.update({
+          where: { id: pUserId },
+          data: { trustScore: Math.min(100, pUser.trustScore + 2) },
+        });
+      }
+    }
+
+    // Gửi thông báo yêu cầu đánh giá tới các thành viên
+    if (participantUserIds.size > 1) {
+      const notifications = Array.from(participantUserIds).map((pUserId) => ({
+        userId: pUserId,
+        type: "RATING" as const,
+        title: "Trận đấu đã hoàn thành! ⭐",
+        body: `Hãy đánh giá các đồng đội cùng tham gia trận "${match.title}".`,
+        payload: { matchId: match.id },
+      }));
+
+      await tx.notification.createMany({
+        data: notifications,
+      });
+    }
+  });
+}
+
