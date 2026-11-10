@@ -14,7 +14,9 @@ import {
 import { AvailabilityCard } from "@/components/profile/availability-card";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { SportProfileCard } from "@/components/profile/sport-profile-card";
+import { UserReviewsCard } from "@/components/profile/user-reviews-card";
 import { calculateScore, getRankTier } from "@/lib/ranking";
+import { getUserRecentReviews } from "@/lib/data/ratings";
 import { getSports } from "@/lib/data/sports";
 import { getCurrentUser, getUserById, getUsers } from "@/lib/data/users";
 import { cn } from "@/lib/utils";
@@ -33,11 +35,12 @@ export default async function ProfilePage({
   params,
 }: PageProps<"/profile/[userId]">) {
   const { userId } = await params;
-  const [user, users, sports, currentUser] = await Promise.all([
+  const [user, users, sports, currentUser, reviews] = await Promise.all([
     getUserById(userId),
     getUsers(),
     getSports(),
     getCurrentUser(),
+    getUserRecentReviews(userId),
   ]);
 
   if (!user) notFound();
@@ -311,6 +314,10 @@ export default async function ProfilePage({
               Xem bảng xếp hạng
             </Link>
           </section>
+
+          <div className="order-6">
+            <UserReviewsCard reviews={reviews} />
+          </div>
 
           <section className="order-5 rounded-2xl border border-border bg-card p-6">
             <h2 className="font-heading text-lg font-bold">Chi tiết uy tín</h2>

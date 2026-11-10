@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Trophy } from "lucide-react";
+import { RateableMatchItem } from "@/components/ratings/rateable-match-item";
 import { RefreshButton } from "@/components/ratings/refresh-button";
-import { getMatchesJoinedBy } from "@/lib/data/matches";
+import { getRateableMatches } from "@/lib/data/ratings";
 import { getCurrentUser } from "@/lib/data/users";
 
 export const metadata: Metadata = {
@@ -11,8 +12,7 @@ export const metadata: Metadata = {
 
 export default async function RatingsPage() {
   const currentUser = await getCurrentUser();
-  const joined = await getMatchesJoinedBy(currentUser.id);
-  const rateable = joined.filter((match) => match.status === "Đã hoàn tất");
+  const rateable = await getRateableMatches(currentUser.id);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-10">
@@ -46,9 +46,11 @@ export default async function RatingsPage() {
           </Link>
         </div>
       ) : (
-        <p className="mt-8 text-sm text-muted-foreground">
-          {rateable.length} trận đang chờ bạn đánh giá.
-        </p>
+        <div className="mt-8 space-y-4">
+          {rateable.map((match) => (
+            <RateableMatchItem key={match.id} match={match} />
+          ))}
+        </div>
       )}
     </div>
   );

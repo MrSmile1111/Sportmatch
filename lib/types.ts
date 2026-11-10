@@ -105,6 +105,8 @@ export type Match = {
   courtName: string;
   address: string;
   dateTime: string;
+  /** Giờ kết thúc, cùng định dạng `dateTime`. */
+  endTime: string;
   maxPlayers: number;
   skillRequirement: SkillRequirement;
   visibility: MatchVisibility;

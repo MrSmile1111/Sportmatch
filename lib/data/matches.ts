@@ -3,7 +3,6 @@ import "server-only";
 import { requireUserId } from "@/lib/auth/session";
 import {
   PARTICIPANT_FROM_DB,
-  STATUS_FROM_DB,
   VISIBILITY_FROM_DB,
   VISIBILITY_TO_DB,
   dateTimeToString,
@@ -14,6 +13,7 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import type {
   Match,
+  MatchStatus,
   MatchVisibility,
   SkillRequirement,
   ViewerRole,
@@ -27,6 +27,7 @@ const matchSelect = {
   courtName: true,
   address: true,
   dateTime: true,
+  endTime: true,
   maxPlayers: true,
   skillRequirement: true,
   visibility: true,
@@ -40,6 +41,31 @@ const matchSelect = {
 
 type MatchRow = Prisma.MatchGetPayload<{ select: typeof matchSelect }>;
 
+function endTimeOf(row: { dateTime: Date; endTime: Date | null }): Date {
+  return row.endTime ?? new Date(row.dateTime.getTime() + COURT_BUSY_WINDOW_MS);
+}
+
+/** Trạng thái tính theo giờ bắt đầu/kết thúc, không cần job cập nhật DB. */
+function statusByTime(row: MatchRow, now = new Date()): MatchStatus {
+  if (row.status === "COMPLETED" || now >= endTimeOf(row)) return "Đã hoàn tất";
+  if (now >= row.dateTime) return "Đang diễn ra";
+  return "Sắp diễn ra";
+}
+
+/** Điều kiện Prisma: trận đã hết giờ (được phép đánh giá đồng đội). */
+export function matchEndedWhere(now = new Date()): Prisma.MatchWhereInput {
+  return {
+    OR: [
+      { status: "COMPLETED" },
+      { endTime: { lte: now } },
+      {
+        endTime: null,
+        dateTime: { lte: new Date(now.getTime() - COURT_BUSY_WINDOW_MS) },
+      },
+    ],
+  };
+}
+
 function toDomainMatch(row: MatchRow): Match {
   return {
     id: row.id,
@@ -49,11 +75,12 @@ function toDomainMatch(row: MatchRow): Match {
     courtName: row.courtName,
     address: row.address,
     dateTime: dateTimeToString(row.dateTime),
+    endTime: dateTimeToString(endTimeOf(row)),
     maxPlayers: row.maxPlayers,
     skillRequirement: skillRequirementFromDb(row.skillRequirement),
     visibility: VISIBILITY_FROM_DB[row.visibility],
     description: row.description,
-    status: STATUS_FROM_DB[row.status],
+    status: statusByTime(row),
     participants: row.participants.map((participant) => ({
       userId: participant.userId,
       status: PARTICIPANT_FROM_DB[participant.status],
@@ -133,6 +160,7 @@ export type NewMatchInput = {
   courtName: string;
   address: string;
   dateTime: string;
+  endTime: string;
   maxPlayers: number;
   skillRequirement: SkillRequirement;
   visibility: MatchVisibility;
@@ -194,6 +222,10 @@ export async function createMatch(input: NewMatchInput): Promise<Match> {
   if (Number.isNaN(dateTime.getTime())) {
     throw new MatchActionError("Ngày giờ không hợp lệ.");
   }
+  const endTime = new Date(input.endTime);
+  if (Number.isNaN(endTime.getTime()) || endTime <= dateTime) {
+    throw new MatchActionError("Giờ kết thúc phải sau giờ bắt đầu.");
+  }
 
   if (input.courtId) {
     const court = await prisma.court.findUnique({
@@ -229,6 +261,7 @@ export async function createMatch(input: NewMatchInput): Promise<Match> {
       courtName: input.courtName,
       address: input.address,
       dateTime,
+      endTime,
       maxPlayers: input.maxPlayers,
       skillRequirement: skillRequirementToDb(input.skillRequirement),
       visibility: VISIBILITY_TO_DB[input.visibility],
@@ -286,12 +319,13 @@ async function lockMatch(tx: Tx, matchId: string) {
       maxPlayers: true,
       visibility: true,
       status: true,
+      dateTime: true,
       participants: { select: { userId: true, status: true } },
     },
   });
 
   if (!match) throw new MatchActionError("Trận đấu không tồn tại.");
-  if (match.status !== "UPCOMING") {
+  if (match.status !== "UPCOMING" || match.dateTime <= new Date()) {
     throw new MatchActionError("Trận đã bắt đầu hoặc đã kết thúc.");
   }
   return match;

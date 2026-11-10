@@ -285,6 +285,8 @@ model Match {
   courtName        String
   address          String          @default("")
   dateTime         DateTime
+  // Giờ kết thúc; null = trận tạo trước khi có trường này (coi như kéo dài 2 giờ)
+  endTime          DateTime?
   maxPlayers       Int             @default(4)
   // null = "Bất kỳ"
   skillRequirement SkillLevel?

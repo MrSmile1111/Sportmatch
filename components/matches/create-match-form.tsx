@@ -118,6 +118,7 @@ export function CreateMatchForm({
   const [address, setAddress] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [skill, setSkill] = useState<(typeof SKILL_OPTIONS)[number]>("Bất kỳ");
   const [visibility, setVisibility] = useState<MatchVisibility>("Công khai");
@@ -278,7 +279,8 @@ export function CreateMatchForm({
     (manualCourt || selectedCourt !== null) &&
     courtName.trim() !== "" &&
     date !== "" &&
-    time !== "";
+    time !== "" &&
+    endTime !== "";
 
   function toggleInvite(userId: string) {
     setInvited((current) =>
@@ -290,6 +292,11 @@ export function CreateMatchForm({
 
   function submit() {
     if (!canSubmit || pending) return;
+    // shortcut: trận phải kết thúc trong cùng ngày, chưa hỗ trợ trận qua nửa đêm
+    if (endTime <= time) {
+      setSubmitError("Giờ kết thúc phải sau giờ bắt đầu.");
+      return;
+    }
     setSubmitError(null);
     startTransition(async () => {
       const result = await createMatchAction({
@@ -299,6 +306,7 @@ export function CreateMatchForm({
         courtName: courtName.trim(),
         address: address.trim() || courtName.trim(),
         dateTime: `${date}T${time}:00`,
+        endTime: `${date}T${endTime}:00`,
         maxPlayers,
         skillRequirement: skill,
         visibility,
@@ -448,7 +456,7 @@ export function CreateMatchForm({
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label
                     htmlFor="date"
@@ -472,7 +480,7 @@ export function CreateMatchForm({
                     htmlFor="time"
                     className="text-sm font-medium text-foreground"
                   >
-                    Giờ
+                    Giờ bắt đầu
                   </label>
                   <input
                     id="time"
@@ -482,6 +490,21 @@ export function CreateMatchForm({
                       setTime(event.target.value);
                       checkBusyCourts(sportId, date, event.target.value);
                     }}
+                    className="mt-2 h-12 w-full rounded-xl border border-input bg-secondary/40 px-4 text-sm outline-none transition-colors focus:border-brand"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="endTime"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Giờ kết thúc
+                  </label>
+                  <input
+                    id="endTime"
+                    type="time"
+                    value={endTime}
+                    onChange={(event) => setEndTime(event.target.value)}
                     className="mt-2 h-12 w-full rounded-xl border border-input bg-secondary/40 px-4 text-sm outline-none transition-colors focus:border-brand"
                   />
                 </div>
@@ -703,7 +726,7 @@ export function CreateMatchForm({
             </li>
             <li className="flex items-center gap-2">
               <Clock className="size-4 shrink-0" />
-              {time || "Chưa chọn giờ"}
+              {time ? `${time} – ${endTime || "?"}` : "Chưa chọn giờ"}
             </li>
             <li className="flex items-center gap-2">
               <Users className="size-4 shrink-0" />

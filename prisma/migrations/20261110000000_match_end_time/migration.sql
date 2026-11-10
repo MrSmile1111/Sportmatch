@@ -1,0 +1,1 @@
+ALTER TABLE "Match" ADD COLUMN "endTime" TIMESTAMP(3);

@@ -80,7 +80,7 @@ export default async function MatchDetailPage({
   const host = userMap.get(match.hostId);
 
   const details = [
-    { icon: CalendarDays, label: "Thời gian", value: formatDateTime(match.dateTime) },
+    { icon: CalendarDays, label: "Thời gian", value: `${formatDateTime(match.dateTime)} – ${match.endTime.slice(11, 16)}` },
     { icon: MapPin, label: "Sân", value: match.courtName },
     { icon: MapPin, label: "Địa chỉ", value: match.address || "Chưa cập nhật" },
     { icon: Globe, label: "Quyền hiển thị", value: match.visibility },

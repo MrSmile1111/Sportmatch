@@ -97,12 +97,6 @@ export const STATUS_TO_DB: Record<MatchStatus, DbMatchStatus> = {
   "Đã hoàn tất": DbMatchStatus.COMPLETED,
 };
 
-export const STATUS_FROM_DB: Record<DbMatchStatus, MatchStatus> = {
-  UPCOMING: "Sắp diễn ra",
-  ONGOING: "Đang diễn ra",
-  COMPLETED: "Đã hoàn tất",
-};
-
 export const PARTICIPANT_TO_DB: Record<
   MatchParticipant["status"],
   DbParticipantStatus
