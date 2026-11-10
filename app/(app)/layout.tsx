@@ -23,6 +23,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         userId={user.id}
         displayName={displayName}
         avatar={user.avatar}
+        avatarUrl={user.avatarUrl}
         isPro={user.isPro}
         unreadNotifications={unreadNotifications}
         unreadMessages={unreadMessages}

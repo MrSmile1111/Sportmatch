@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -43,6 +45,7 @@ export function AppHeader({
   userId,
   displayName,
   avatar,
+  avatarUrl,
   isPro,
   unreadNotifications,
   unreadMessages,
@@ -50,11 +53,15 @@ export function AppHeader({
   userId: string;
   displayName: string;
   avatar: string;
+  avatarUrl: string | null;
   isPro: boolean;
   unreadNotifications: number;
   unreadMessages: number;
 }) {
   const pathname = usePathname();
+  // URL ảnh tải lỗi (file mất, link hỏng...) → hiện avatar emoji thay vì ảnh vỡ.
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+  const showAvatarImage = avatarUrl && avatarUrl !== brokenUrl;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-xl">
@@ -128,8 +135,20 @@ export function AppHeader({
 
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-2 rounded-full border border-border py-1 pr-3 pl-1 transition-colors hover:bg-secondary">
-              <span className="bg-brand flex size-8 items-center justify-center rounded-full text-base">
-                {avatar}
+              <span className="bg-brand relative flex size-8 items-center justify-center overflow-hidden rounded-full text-base">
+                {showAvatarImage ? (
+                  <Image
+                    src={avatarUrl}
+                    alt={displayName}
+                    fill
+                    unoptimized
+                    sizes="32px"
+                    className="object-cover"
+                    onError={() => setBrokenUrl(avatarUrl)}
+                  />
+                ) : (
+                  avatar
+                )}
               </span>
               <span className="text-sm font-semibold">{displayName}</span>
               <ChevronDown className="size-4 text-muted-foreground" />

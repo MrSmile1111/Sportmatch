@@ -6,9 +6,11 @@ import { requireUserId } from "@/lib/auth/session";
 import { searchCourts } from "@/lib/data/courts";
 import {
   ProfileInputError,
+  replaceUserImage,
   updateCurrentUser,
   type UserProfileInput,
 } from "@/lib/data/users";
+import { imageStorage } from "@/lib/storage/image-storage";
 import { PLAY_PURPOSES, SKILL_LEVELS, WEEKDAYS } from "@/lib/types";
 
 const profileSchema = z.object({
@@ -38,14 +40,18 @@ const profileSchema = z.object({
       }),
     )
     .max(100),
+  removeAvatarImage: z.boolean().optional(),
 });
 
 /**
  * Luôn ghi vào user của phiên đăng nhập (`updateCurrentUser` tự lấy userId từ
  * session) — không có đường nào sửa hồ sơ của người khác.
+ *
+ * `removeAvatarImage`: user chọn lại avatar hệ thống → gỡ ảnh đã upload để
+ * avatar emoji được hiển thị.
  */
 export async function saveProfileAction(
-  input: UserProfileInput,
+  input: UserProfileInput & { removeAvatarImage?: boolean },
 ): Promise<{ error: string | null }> {
   const parsed = profileSchema.safeParse(input);
   if (!parsed.success) {
@@ -54,6 +60,10 @@ export async function saveProfileAction(
 
   try {
     const user = await updateCurrentUser(parsed.data);
+    if (parsed.data.removeAvatarImage) {
+      const previous = await replaceUserImage(user.id, "avatar", null);
+      if (previous) await imageStorage.remove(previous);
+    }
     revalidatePath("/settings");
     revalidatePath(`/profile/${user.id}`);
     revalidatePath("/discover");

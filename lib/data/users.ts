@@ -298,14 +298,14 @@ const IMAGE_COLUMN = {
 } as const satisfies Record<ProfileImageKind, string>;
 
 /**
- * Ghi URL ảnh đại diện / ảnh bìa mới cho `userId` và trả về URL cũ (để dọn
- * file). Hàm KHÔNG tự kiểm tra quyền — nơi gọi phải truyền đúng user của phiên
- * đăng nhập.
+ * Ghi URL ảnh đại diện / ảnh bìa mới cho `userId` (`null` = gỡ ảnh) và trả về
+ * URL cũ (để dọn file). Hàm KHÔNG tự kiểm tra quyền — nơi gọi phải truyền đúng
+ * user của phiên đăng nhập.
  */
 export async function replaceUserImage(
   userId: string,
   kind: ProfileImageKind,
-  url: string,
+  url: string | null,
 ): Promise<string | null> {
   const column = IMAGE_COLUMN[kind];
   const previous = await prisma.user.findUniqueOrThrow({

@@ -1,33 +1,46 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   CalendarDays,
-  Camera,
   Crosshair,
   Save,
   Shield,
+  Smile,
   Trophy,
+  Upload,
   User as UserIcon,
 } from "lucide-react";
 import { saveProfileAction } from "@/app/(app)/settings/actions";
+import { ImageCropDialog } from "@/components/profile/image-crop-dialog";
 import {
   AvailabilityEditor,
   type SlotRow,
 } from "@/components/settings/availability-editor";
 import { SportProfileEditor } from "@/components/settings/sport-profile-editor";
+import { useToast } from "@/components/ui/toast";
 import {
   minutesToTime,
   timeToMinutes,
   validateSlotDrafts,
 } from "@/lib/availability";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  PROFILE_IMAGE_SPECS,
+  validateImageFile,
+} from "@/lib/profile-media";
 import type { AvailabilitySlot, Gender, UserSport } from "@/lib/types";
+import { uploadProfileImage } from "@/lib/upload-profile-image";
 import { cn } from "@/lib/utils";
 
 export type SettingsUser = {
   name: string;
   avatar: string;
+  /** Ảnh đại diện đã upload — ưu tiên hiển thị hơn avatar emoji. */
+  avatarUrl: string | null;
   area: string;
   gender: Gender | "";
   birthday: string;
@@ -78,7 +91,17 @@ export function SettingsPanel({
   sports: { id: string; name: string; icon: string }[];
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("profile");
+  const router = useRouter();
+  const toast = useToast();
   const [avatar, setAvatar] = useState(user.avatar);
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  // Chọn avatar hệ thống khi đang có ảnh upload → gỡ ảnh đó lúc bấm Lưu.
+  const [removeAvatarImage, setRemoveAvatarImage] = useState(false);
+  const [brokenAvatarUrl, setBrokenAvatarUrl] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const showAvatarImage =
+    avatarUrl && !removeAvatarImage && avatarUrl !== brokenAvatarUrl;
   const [showAvatars, setShowAvatars] = useState(false);
   const [name, setName] = useState(user.name);
   const [area, setArea] = useState(user.area);
@@ -111,6 +134,36 @@ export function SettingsPanel({
     });
   }
 
+  function handleAvatarFile(file: File | undefined) {
+    if (!file) return;
+    const problem = validateImageFile(file);
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  function closeCropper() {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  }
+
+  async function submitAvatarImage(blob: Blob) {
+    const url = await uploadProfileImage("avatar", blob);
+    setAvatarUrl(url);
+    setRemoveAvatarImage(false);
+    toast.success(PROFILE_IMAGE_SPECS.avatar.successMessage);
+    closeCropper();
+    // Tải lại layout để avatar trên header cập nhật theo.
+    router.refresh();
+  }
+
+  function chooseSystemAvatar(option: string) {
+    setAvatar(option);
+    if (avatarUrl) setRemoveAvatarImage(true);
+  }
+
   function save() {
     setSaved(false);
     if (slotErrors.some(Boolean)) {
@@ -141,9 +194,18 @@ export function SettingsPanel({
           startMinute: timeToMinutes(slot.start) ?? -1,
           endMinute: timeToMinutes(slot.end) ?? -1,
         })),
+        removeAvatarImage,
       });
-      if (result.error) setError(result.error);
-      else setSaved(true);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setSaved(true);
+      if (removeAvatarImage) {
+        setAvatarUrl(null);
+        setRemoveAvatarImage(false);
+      }
+      router.refresh();
     });
   }
 
@@ -183,22 +245,57 @@ export function SettingsPanel({
             <section className="rounded-2xl border border-border bg-card p-6">
               <h2 className="font-heading text-lg font-bold">Ảnh đại diện</h2>
               <div className="mt-5 flex flex-wrap items-center gap-5">
-                <span className="bg-brand-gradient flex size-20 items-center justify-center rounded-full text-4xl">
-                  {avatar}
+                <span className="bg-brand-gradient relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full text-4xl">
+                  {showAvatarImage ? (
+                    <Image
+                      src={avatarUrl}
+                      alt={name}
+                      fill
+                      unoptimized
+                      sizes="80px"
+                      className="object-cover"
+                      onError={() => setBrokenAvatarUrl(avatarUrl)}
+                    />
+                  ) : (
+                    avatar
+                  )}
                 </span>
                 <div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAvatars((value) => !value)}
-                    className="border-brand text-brand hover:bg-brand/10 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition-colors"
-                  >
-                    <Camera className="size-4" />
-                    Thay đổi ảnh đại diện
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="bg-brand-gradient inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                    >
+                      <Upload className="size-4" />
+                      Tải ảnh lên
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAvatars((value) => !value)}
+                      className="border-brand text-brand hover:bg-brand/10 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition-colors"
+                    >
+                      <Smile className="size-4" />
+                      Chọn avatar hệ thống
+                    </button>
+                  </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Chọn từ avatar hệ thống hoặc upload ảnh của bạn (tối đa
-                    5MB).
+                    Upload ảnh của bạn (JPG, PNG, WebP, tối đa 5MB) hoặc chọn
+                    từ avatar hệ thống.
                   </p>
+                  {removeAvatarImage ? (
+                    <p className="text-brand mt-1 text-xs font-medium">
+                      Ảnh đã upload sẽ được thay bằng avatar hệ thống khi bấm
+                      Lưu thay đổi.{" "}
+                      <button
+                        type="button"
+                        onClick={() => setRemoveAvatarImage(false)}
+                        className="underline underline-offset-2"
+                      >
+                        Giữ ảnh đã upload
+                      </button>
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -208,11 +305,11 @@ export function SettingsPanel({
                     <button
                       key={option}
                       type="button"
-                      onClick={() => setAvatar(option)}
+                      onClick={() => chooseSystemAvatar(option)}
                       aria-label={`Chọn avatar ${option}`}
                       className={cn(
                         "flex aspect-square items-center justify-center rounded-xl border text-2xl transition-colors",
-                        avatar === option
+                        avatar === option && !showAvatarImage
                           ? "border-brand bg-brand/10"
                           : "border-border hover:border-brand/50",
                       )}
@@ -221,6 +318,27 @@ export function SettingsPanel({
                     </button>
                   ))}
                 </div>
+              ) : null}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                className="hidden"
+                onChange={(event) => {
+                  handleAvatarFile(event.target.files?.[0]);
+                  // Reset để chọn lại đúng file đó vẫn kích hoạt onChange.
+                  event.target.value = "";
+                }}
+              />
+              {cropSrc ? (
+                <ImageCropDialog
+                  key={cropSrc}
+                  kind="avatar"
+                  src={cropSrc}
+                  onCancel={closeCropper}
+                  onSubmit={submitAvatarImage}
+                />
               ) : null}
             </section>
 

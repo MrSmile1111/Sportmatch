@@ -18,6 +18,7 @@ export default async function SettingsPage() {
       user={{
         name: currentUser.name,
         avatar: currentUser.avatar,
+        avatarUrl: currentUser.avatarUrl,
         area: currentUser.area,
         gender: currentUser.gender,
         birthday: currentUser.birthday,
