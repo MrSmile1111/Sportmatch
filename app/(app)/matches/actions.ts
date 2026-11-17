@@ -1,6 +1,9 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
+import { findGroupConversationId } from "@/lib/data/chat";
+import { notifyConversationMembers } from "@/lib/realtime/broadcast";
 import {
   MatchActionError,
   cancelJoinRequest,
@@ -44,5 +47,13 @@ export async function reviewJoinRequestAction(
   requesterId: string,
   approve: boolean,
 ) {
-  return run(() => reviewJoinRequest(matchId, requesterId, approve));
+  const result = await run(() => reviewJoinRequest(matchId, requesterId, approve));
+  if (approve && !result.error) {
+    // Báo realtime để nhóm chat trận hiện ngay cho người vừa được duyệt.
+    after(async () => {
+      const conversationId = await findGroupConversationId({ matchId }, requesterId);
+      if (conversationId) await notifyConversationMembers(conversationId);
+    });
+  }
+  return result;
 }

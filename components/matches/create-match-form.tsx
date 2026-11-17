@@ -29,8 +29,10 @@ import {
   getBusyCourtIdsAction,
 } from "@/app/(app)/matches/create/actions";
 import { CourtPicker } from "@/components/matches/court-picker";
+import { useToast } from "@/components/ui/toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { LatLng } from "@/lib/geo";
+import { DAILY_INVITE_LIMIT, DAILY_LIMIT_MESSAGE } from "@/lib/limits";
 import {
   SKILL_LEVELS,
   type MatchVisibility,
@@ -124,6 +126,7 @@ export function CreateMatchForm({
   const [visibility, setVisibility] = useState<MatchVisibility>("Công khai");
   const [inviteQuery, setInviteQuery] = useState("");
   const [invited, setInvited] = useState<string[]>([]);
+  const toast = useToast();
   const [description, setDescription] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -283,6 +286,10 @@ export function CreateMatchForm({
     endTime !== "";
 
   function toggleInvite(userId: string) {
+    if (!invited.includes(userId) && invited.length >= DAILY_INVITE_LIMIT) {
+      toast.error(DAILY_LIMIT_MESSAGE);
+      return;
+    }
     setInvited((current) =>
       current.includes(userId)
         ? current.filter((value) => value !== userId)
@@ -343,7 +350,7 @@ export function CreateMatchForm({
         </div>
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="size-4" />
-          {invited.length} người được mời
+          {invited.length}/{DAILY_INVITE_LIMIT} người được mời
         </p>
       </div>
 

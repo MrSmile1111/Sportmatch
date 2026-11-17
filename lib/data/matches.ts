@@ -10,6 +10,12 @@ import {
   skillRequirementToDb,
 } from "@/lib/db/mappers";
 import type { Prisma } from "@/lib/generated/prisma/client";
+import {
+  DAILY_INVITE_LIMIT,
+  DAILY_LIMIT_MESSAGE,
+  DAILY_MATCH_LIMIT,
+  startOfTodayVN,
+} from "@/lib/limits";
 import { prisma } from "@/lib/prisma";
 import type {
   Match,
@@ -198,8 +204,24 @@ export async function getBusyCourtIds(
   return rows.flatMap((row) => (row.courtId ? [row.courtId] : []));
 }
 
+/** Số trận `userId` đã tạo từ 00:00 hôm nay (giờ Việt Nam). */
+export function countMatchesCreatedToday(userId: string): Promise<number> {
+  return prisma.match.count({
+    where: { hostId: userId, createdAt: { gte: startOfTodayVN() } },
+  });
+}
+
 export async function createMatch(input: NewMatchInput): Promise<Match> {
   const hostId = await requireUserId();
+
+  // shortcut: đếm rồi mới tạo, 2 request cùng lúc có thể lọt qua; cần chặt thì khoá theo user
+  if ((await countMatchesCreatedToday(hostId)) >= DAILY_MATCH_LIMIT) {
+    throw new MatchActionError(DAILY_LIMIT_MESSAGE);
+  }
+  // Mỗi ngày chỉ tạo 1 trận nên giới hạn lời mời trong trận = giới hạn lời mời trong ngày.
+  if (new Set(input.invitedUserIds).size > DAILY_INVITE_LIMIT) {
+    throw new MatchActionError(DAILY_LIMIT_MESSAGE);
+  }
 
   const sport = await prisma.sport.findUnique({
     where: { id: input.sportId },

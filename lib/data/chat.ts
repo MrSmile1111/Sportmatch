@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Prisma } from "@/lib/generated/prisma/client";
+import { hasBannedWords } from "@/lib/chat-filter";
 import { prisma } from "@/lib/prisma";
 import type {
   ChatConversation,
@@ -224,6 +225,9 @@ export async function sendMessage(input: {
   if (!body) throw new ChatActionError("Tin nhắn trống.");
   if (body.length > MAX_MESSAGE_LENGTH) {
     throw new ChatActionError(`Tin nhắn tối đa ${MAX_MESSAGE_LENGTH} ký tự.`);
+  }
+  if (hasBannedWords(body)) {
+    throw new ChatActionError("Opps, hãy dùng từ lành mạnh hơn");
   }
   await assertMember(input.conversationId, input.senderId);
 

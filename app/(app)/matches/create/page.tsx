@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Lock } from "lucide-react";
 import {
   CreateMatchForm,
   type InvitableUser,
 } from "@/components/matches/create-match-form";
+import { countMatchesCreatedToday } from "@/lib/data/matches";
 import { getSports } from "@/lib/data/sports";
+import { DAILY_LIMIT_MESSAGE, DAILY_MATCH_LIMIT } from "@/lib/limits";
 import { getCurrentUser, getUsers } from "@/lib/data/users";
 
 export const metadata: Metadata = {
@@ -13,11 +17,25 @@ export const metadata: Metadata = {
 const DEFAULT_CENTER = { lat: 21.0285, lng: 105.8542 };
 
 export default async function CreateMatchPage() {
-  const [sports, users, currentUser] = await Promise.all([
-    getSports(),
-    getUsers(),
-    getCurrentUser(),
-  ]);
+  const currentUser = await getCurrentUser();
+  if ((await countMatchesCreatedToday(currentUser.id)) >= DAILY_MATCH_LIMIT) {
+    return (
+      <div className="mx-auto flex w-full max-w-md flex-col items-center px-6 py-20 text-center">
+        <div className="flex size-14 items-center justify-center rounded-full bg-orange-500/10 text-orange-500">
+          <Lock className="size-6" />
+        </div>
+        <p className="mt-4 text-lg font-semibold">{DAILY_LIMIT_MESSAGE}</p>
+        <Link
+          href="/matches"
+          className="mt-6 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
+        >
+          Quay lại Trận đấu
+        </Link>
+      </div>
+    );
+  }
+
+  const [sports, users] = await Promise.all([getSports(), getUsers()]);
 
   const invitable: InvitableUser[] = users
     .filter((user) => user.id !== currentUser.id)

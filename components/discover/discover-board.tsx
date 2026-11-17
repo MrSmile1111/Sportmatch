@@ -36,7 +36,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { openDirectChatAction } from "@/app/(app)/chat/actions";
+import { useToast } from "@/components/ui/toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { DAILY_INVITE_LIMIT, DAILY_LIMIT_MESSAGE } from "@/lib/limits";
 import { WEEKDAYS, WEEKDAY_SHORT, type Weekday } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +77,6 @@ const SORT_OPTIONS = [
   { id: "rating", label: "Đánh giá cao" },
 ];
 
-const FREE_INVITES_PER_DAY = 20;
 const AGE_SUGGESTIONS = [
   ...Array.from({ length: 81 }, (_, age) => String(age)),
   "60+",
@@ -234,6 +235,7 @@ export function DiscoverBoard({
   const [days, setDays] = useState<Weekday[]>([]);
   const [sort, setSort] = useState("match");
   const [invitesUsed, setInvitesUsed] = useState(0);
+  const toast = useToast();
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [invitationDialogOpen, setInvitationDialogOpen] = useState(false);
   const [skipped, setSkipped] = useState<string[]>([]);
@@ -340,7 +342,10 @@ export function DiscoverBoard({
   }
 
   function invite(user: DiscoverUser) {
-    if (invitesUsed >= FREE_INVITES_PER_DAY) return;
+    if (invitesUsed >= DAILY_INVITE_LIMIT) {
+      toast.error(DAILY_LIMIT_MESSAGE);
+      return;
+    }
     setInvitesUsed((value) => value + 1);
     setInvitations((current) => [
       {
@@ -743,7 +748,7 @@ export function DiscoverBoard({
             />
             <StatPill
               icon={<Zap className="size-5 text-white" />}
-              value={`${invitesUsed}/${FREE_INVITES_PER_DAY}`}
+              value={`${invitesUsed}/${DAILY_INVITE_LIMIT}`}
               label="lượt mời miễn phí"
               onClick={() => setInvitationDialogOpen(true)}
             />
@@ -888,7 +893,6 @@ export function DiscoverBoard({
                       <button
                         type="button"
                         onClick={() => invite(player)}
-                        disabled={invitesUsed >= FREE_INVITES_PER_DAY}
                         className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Send className="size-4" />
@@ -918,7 +922,7 @@ export function DiscoverBoard({
       >
         <DialogHeader className="border-b border-border px-5 py-5 pr-12 sm:px-6">
           <DialogTitle className="font-heading text-lg font-bold sm:text-xl">
-            Danh sách đã gửi lời mời ({invitesUsed}/{FREE_INVITES_PER_DAY})
+            Danh sách đã gửi lời mời ({invitesUsed}/{DAILY_INVITE_LIMIT})
           </DialogTitle>
           <DialogDescription>
             Theo dõi những người chơi bạn đã gửi lời mời.
