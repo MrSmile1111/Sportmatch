@@ -88,7 +88,7 @@ export default async function MatchDetailPage({
   ];
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-10">
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <Link
         href="/matches"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -224,6 +224,12 @@ export default async function MatchDetailPage({
               <ul className="mt-4 space-y-3">
                 {requests.map((user) => (
                   <PlayerRow key={user.id} user={user}>
+                    <Link
+                      href={`/profile/${user.id}`}
+                      className="text-brand shrink-0 text-xs font-semibold hover:underline"
+                    >
+                      Xem hồ sơ
+                    </Link>
                     <ReviewRequestActions
                       matchId={match.id}
                       requesterId={user.id}

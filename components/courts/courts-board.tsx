@@ -219,7 +219,7 @@ export function CourtsBoard({
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight">
@@ -257,7 +257,8 @@ export function CourtsBoard({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      {/* Điện thoại: 1 hàng cuộn ngang thay vì 8 hàng chip */}
+      <div className="-mx-4 mt-6 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
         <SportChip active={sportId === "all"} onClick={() => changeSport("all")}>
           <LayoutGrid className="size-4" />
           Tất cả
@@ -405,7 +406,7 @@ function SportChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors",
+        "inline-flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors",
         active
           ? "bg-brand-gradient text-white"
           : "border border-border bg-card text-muted-foreground hover:text-foreground",

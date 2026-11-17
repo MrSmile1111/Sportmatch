@@ -34,7 +34,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <RealtimeListener topic={userRealtimeTopic(user.id)} />
       <DiscoverIntroProvider>
         <Toaster>
-          <div className="flex-1">{children}</div>
+          {/* pb-16: chừa chỗ cho thanh tab dưới trên điện thoại */}
+          <div className="flex-1 pb-16 lg:pb-0">{children}</div>
         </Toaster>
       </DiscoverIntroProvider>
     </>

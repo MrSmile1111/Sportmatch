@@ -108,7 +108,7 @@ export function DiscoverExperience({
       <main
         aria-hidden={introOpen}
         inert={introOpen}
-        className={cn(introOpen && "h-[calc(100dvh-4rem)] overflow-hidden")}
+        className={cn(introOpen && "h-[calc(100dvh-8rem)] overflow-hidden lg:h-[calc(100dvh-4rem)]")}
       >
         <div className="fixed top-20 right-5 z-40 sm:right-8">
           <button

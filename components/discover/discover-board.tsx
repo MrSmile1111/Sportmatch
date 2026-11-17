@@ -4,6 +4,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -209,6 +210,16 @@ function useMidnightCountdown() {
   return label;
 }
 
+const DESKTOP_QUERY = "(min-width: 1024px)";
+function subscribeDesktop(onChange: () => void) {
+  const query = window.matchMedia(DESKTOP_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+function isDesktopNow() {
+  return window.matchMedia(DESKTOP_QUERY).matches;
+}
+
 export function DiscoverBoard({
   users,
   sports,
@@ -218,7 +229,10 @@ export function DiscoverBoard({
   sports: { id: string; name: string; icon: string }[];
   myAvailability: Weekday[];
 }) {
-  const [showFilters, setShowFilters] = useState(true);
+  // Mặc định: mở bộ lọc trên desktop, thu gọn trên điện thoại (bộ lọc dài cả 2 màn hình sẽ che hết thẻ người chơi).
+  const isDesktop = useSyncExternalStore(subscribeDesktop, isDesktopNow, () => true);
+  const [filtersPref, setShowFilters] = useState<boolean | null>(null);
+  const showFilters = filtersPref ?? isDesktop;
   const [showCustomSportInput, setShowCustomSportInput] = useState(false);
   const [customSportName, setCustomSportName] = useState("");
   const [customSports, setCustomSports] = useState<
@@ -423,7 +437,7 @@ export function DiscoverBoard({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] px-6 py-8">
+    <div className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 sm:py-8">
       <Dialog open={invitationDialogOpen} onOpenChange={setInvitationDialogOpen}>
       <div
         className={cn(
@@ -740,7 +754,7 @@ export function DiscoverBoard({
             </button>
           ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <StatPill
               icon={<Users className="size-5 text-white" />}
               value={String(matched.length)}
@@ -1148,11 +1162,11 @@ function StatPill({
 }) {
   const content = (
     <>
-      <span className="bg-brand-gradient flex size-10 shrink-0 items-center justify-center rounded-xl">
+      <span className="bg-brand-gradient flex size-8 shrink-0 items-center justify-center rounded-xl sm:size-10">
         {icon}
       </span>
       <span className="min-w-0 text-left">
-        <span className="font-heading block text-xl font-extrabold tabular-nums">
+        <span className="font-heading block text-lg font-extrabold tabular-nums sm:text-xl">
           {value}
         </span>
         <span className="block truncate text-xs text-muted-foreground">
@@ -1168,7 +1182,7 @@ function StatPill({
         type="button"
         onClick={onClick}
         aria-label={`${label}: ${value}. Xem danh sách đã gửi lời mời`}
-        className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+        className="flex w-full cursor-pointer gap-2 rounded-2xl border border-border bg-card p-3 text-left max-sm:flex-col sm:items-center sm:gap-3 sm:px-5 sm:py-4 transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
       >
         {content}
       </button>
@@ -1176,7 +1190,7 @@ function StatPill({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4">
+    <div className="flex gap-2 rounded-2xl border border-border bg-card p-3 max-sm:flex-col sm:items-center sm:gap-3 sm:px-5 sm:py-4">
       {content}
     </div>
   );

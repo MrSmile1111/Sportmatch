@@ -18,7 +18,7 @@ export default async function NotificationsPage() {
   ).length;
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-6 py-10">
+    <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
       <h1 className="text-3xl font-extrabold tracking-tight">Thông báo</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         {unread === 0 ? "Bạn đã xử lý xong!" : `${unread} thông báo chưa đọc`}

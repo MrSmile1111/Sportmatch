@@ -60,9 +60,10 @@ export function AppHeader({
   const pathname = usePathname();
 
   return (
+    <>
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-6 px-6">
-        <SiteLogo href="/discover" />
+      <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-6 px-4 sm:px-6">
+        <SiteLogo href="/discover" labelClassName="max-sm:hidden" />
 
         <nav className="hidden items-center gap-1 lg:flex">
           {navItems.map((item) => {
@@ -85,15 +86,16 @@ export function AppHeader({
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
 
           <Link
             href="/matches/create"
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#fff0e6] px-5 py-2.5 text-sm font-semibold text-[#ff5722] shadow-sm shadow-orange-950/5 transition-all duration-200 ease-in-out hover:bg-orange-400 hover:text-white hover:shadow-orange-500/20 active:bg-[#e64a19] active:text-white"
+            aria-label="Tạo trận"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#fff0e6] max-sm:size-9 max-sm:justify-center sm:px-5 sm:py-2.5 text-sm font-semibold text-[#ff5722] shadow-sm shadow-orange-950/5 transition-all duration-200 ease-in-out hover:bg-orange-400 hover:text-white hover:shadow-orange-500/20 active:bg-[#e64a19] active:text-white"
           >
             <Plus className="size-4" />
-            Tạo trận
+            <span className="max-sm:hidden">Tạo trận</span>
           </Link>
 
           <Link
@@ -123,22 +125,22 @@ export function AppHeader({
           </Link>
 
           {isPro && (
-            <span className="flex items-center gap-1 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-400">
+            <span className="hidden items-center gap-1 rounded-full border border-violet-500/40 sm:flex bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-400">
               <Crown className="size-3" />
               Pro
             </span>
           )}
 
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2 rounded-full border border-border py-1 pr-3 pl-1 transition-colors hover:bg-secondary">
+            <DropdownMenuTrigger className="flex items-center gap-2 rounded-full border border-border p-1 transition-colors hover:bg-secondary sm:pr-3">
               <UserAvatar
                 emoji={avatar}
                 src={avatarUrl}
                 name={displayName}
                 className="bg-brand size-8 text-base"
               />
-              <span className="text-sm font-semibold">{displayName}</span>
-              <ChevronDown className="size-4 text-muted-foreground" />
+              <span className="text-sm font-semibold max-sm:hidden">{displayName}</span>
+              <ChevronDown className="size-4 text-muted-foreground max-sm:hidden" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem asChild>
@@ -182,5 +184,27 @@ export function AppHeader({
         </div>
       </div>
     </header>
+
+    {/* Thanh tab dưới cho điện thoại (kiểu Strava/Playtomic). Nằm ngoài <header> vì backdrop-blur làm hỏng position: fixed của con. */}
+    <nav className="fixed inset-x-0 bottom-0 z-50 grid h-16 grid-cols-5 border-t border-border bg-background/95 backdrop-blur-xl lg:hidden">
+      {navItems.map((item) => {
+        const active = pathname.startsWith(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+              active ? "text-brand" : "text-muted-foreground",
+            )}
+          >
+            <item.icon className="size-5" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+    </>
   );
 }

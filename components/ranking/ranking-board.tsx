@@ -120,7 +120,7 @@ export function RankingBoard({
   const myRank = ranked.findIndex((player) => player.id === currentUserId) + 1;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="text-center">
         <span className="bg-brand/10 text-brand inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold">
           <Trophy className="size-4" />
